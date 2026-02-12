@@ -1,31 +1,60 @@
 import React, { useEffect, useState } from "react";
 import { getProducts } from "../api/api";
-import AddProduct from "./AddProduct";
 
-export default function Products() {
+const Products = () => {
   const [products, setProducts] = useState([]);
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = user?.token;
-  const isAdmin = user?.role === "admin";
-
-  const fetchProducts = async () => {
-    const data = await getProducts(token);
-    setProducts(data);
-  };
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await getProducts();
+
+        console.log("Products response:", data);
+
+        if (Array.isArray(data)) {
+          setProducts(data);
+        } else {
+          setProducts([]);
+          setError("Failed to load products");
+        }
+
+      } catch (err) {
+        setError("Error fetching products");
+        setProducts([]);
+      }
+    };
+
     fetchProducts();
   }, []);
 
   return (
-    <div className="products-container">
+    <div style={{ padding: "20px" }}>
       <h2>Products</h2>
-      {isAdmin && <AddProduct token={token} onAdd={(p) => setProducts([...products, p])} />}
-      <ul>
-        {products.map((p) => (
-          <li key={p._id}>{p.name} - ${p.price}</li>
-        ))}
-      </ul>
+
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      {products.length === 0 && !error && <p>No products available</p>}
+
+      {products.map((product) => (
+        <div
+          key={product._id}
+          style={{
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "5px",
+          }}
+        >
+          <h3>{product.name}</h3>
+          <p><strong>SKU:</strong> {product.sku}</p>
+          <p><strong>Price:</strong> ${product.price}</p>
+          <p><strong>Quantity:</strong> {product.quantity}</p>
+          <p>{product.description}</p>
+        </div>
+      ))}
     </div>
   );
-}
+};
+
+export default Products;
