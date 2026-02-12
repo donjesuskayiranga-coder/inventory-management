@@ -1,186 +1,82 @@
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f0f2f5;
-    color: #333;
-}
-
-.container {
-    max-width: 450px;
-    margin: 60px auto;
-    padding: 30px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-h1, h2 {
-    color: #2c3e50;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-input {
-    display: block;
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 16px;
-    box-sizing: border-box;
-}
-
-input:focus {
-    outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
-}
-
-button {
-    display: inline-block;
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border: none;
-    border-radius: 6px;
-    background-color: #3498db;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-button:hover {
-    background-color: #2980b9;
-}
-
-.error {
-    color: #e74c3c;
-    margin-top: 5px;
-    font-weight: 500;
-    text-align: center;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
 }
 
 .navbar {
-    display: flex;
-    align-items: center;
-    padding: 15px 30px;
-    background-color: #2c3e50;
-    color: #fff;
+  background: #111827;
+  color: white;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .navbar a {
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    margin-right: 20px;
-    transition: color 0.3s ease;
-}
-
-.navbar a:hover {
-    color: #3498db;
+  color: white;
+  margin-right: 20px;
+  text-decoration: none;
 }
 
 .navbar button {
-    margin-left: auto;
-    background-color: #e74c3c;
-    padding: 8px 15px;
-    font-weight: 600;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+  padding: 6px 12px;
+  background: #ef4444;
+  border: none;
+  color: white;
+  cursor: pointer;
 }
 
-.navbar button:hover {
-    background-color: #c0392b;
+.auth-container {
+  max-width: 400px;
+  margin: 80px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.dashboard-container {
-    max-width: 800px;
-    margin: 40px auto;
-    padding: 30px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    text-align: center;
+.auth-container input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
 }
 
-.dashboard-container p {
-    font-size: 18px;
-    color: #555;
+.auth-container button {
+  width: 100%;
+  padding: 10px;
+  background: #2563eb;
+  border: none;
+  color: white;
+}
+
+.dashboard {
+  padding: 40px;
+}
+
+.cards {
+  display: flex;
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  flex: 1;
 }
 
 .products-container {
-    max-width: 900px;
-    margin: 30px auto;
-    padding: 25px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 40px;
 }
 
-.products-container h2 {
-    margin-bottom: 20px;
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
 }
 
-.products-container ul {
-    list-style: none;
-    padding: 0;
-}
-
-.products-container ul li {
-    padding: 12px 15px;
-    margin-bottom: 10px;
-    background-color: #f9f9f9;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 500;
-}
-
-.add-product-form {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 20px;
-}
-
-.add-product-form input {
-    margin-bottom: 12px;
-}
-
-.add-product-form button {
-    width: 50%;
-    align-self: flex-start;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-}
-
-@media (max-width: 768px) {
-    .container, .dashboard-container, .products-container {
-        margin: 20px;
-        padding: 20px;
-    }
-
-    .add-product-form button {
-        width: 100%;
-    }
-
-    .navbar {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .navbar a {
-        margin-bottom: 10px;
-    }
-
-    .navbar button {
-        margin-left: 0;
-    }
+.product-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
 }
