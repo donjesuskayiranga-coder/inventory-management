@@ -1,36 +1,34 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { createProduct } from "../api/api";
+import { useNavigate } from "react-router-dom";
+import Navbar from "./Navbar";
 
-export default function AddProduct({ token, onAdd }) {
+export default function AddProduct() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const navigate = useNavigate();
 
-  const handleAdd = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) return;
-    const newProduct = await createProduct({ name, price }, token);
-    onAdd(newProduct);
-    setName("");
-    setPrice("");
+    const token = localStorage.getItem("token");
+
+    await createProduct({ name, price, quantity }, token);
+    navigate("/products");
   };
 
   return (
-    <form onSubmit={handleAdd} className="add-product-form">
-      <input
-        type="text"
-        placeholder="Product Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      <input
-        type="number"
-        placeholder="Price"
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-        required
-      />
-      <button type="submit">Add Product</button>
-    </form>
+    <>
+      <Navbar />
+      <div className="auth-container">
+        <h2>Add Product</h2>
+        <form onSubmit={handleSubmit}>
+          <input placeholder="Name" onChange={(e) => setName(e.target.value)} required />
+          <input type="number" placeholder="Price" onChange={(e) => setPrice(e.target.value)} required />
+          <input type="number" placeholder="Quantity" onChange={(e) => setQuantity(e.target.value)} required />
+          <button type="submit">Create</button>
+        </form>
+      </div>
+    </>
   );
 }
