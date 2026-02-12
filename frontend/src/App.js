@@ -6,10 +6,8 @@ import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
 import Navbar from "./components/Navbar";
-
 function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
-
   return (
     <Router>
       {user && <Navbar setUser={setUser} />}
@@ -22,5 +20,4 @@ function App() {
     </Router>
   );
 }
-
 export default App;
