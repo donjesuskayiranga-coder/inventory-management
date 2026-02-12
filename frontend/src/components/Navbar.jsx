@@ -1,22 +1,22 @@
-import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-export default function Navbar({ setUser }) {
+export default function Navbar() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+  const logout = () => {
+    localStorage.clear();
     navigate("/");
   };
 
   return (
-    <nav className="navbar">
-      <Link to="/dashboard">Dashboard</Link>
-      <Link to="/products">Products</Link>
-      {user?.role === "admin" && <Link to="/admin">Admin</Link>}
-      <button onClick={handleLogout}>Logout</button>
-    </nav>
+    <div className="navbar">
+      <h2>Inventory Admin</h2>
+      <div>
+        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/products">Products</Link>
+        <Link to="/add-product">Add Product</Link>
+        <button onClick={logout}>Logout</button>
+      </div>
+    </div>
   );
 }
