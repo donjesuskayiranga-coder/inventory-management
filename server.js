@@ -17,7 +17,7 @@ app.use("/api/auth", authRoutes);
 app.get("/",(req,res) => {
     res.send("Inventory Api is running");
     
-        });
+        })
 
         app.get("/api/admin-data", (req,res) => {
         res.json({
