@@ -1,27 +1,52 @@
-import axios from "axios";
 
-const API_URL = "http://localhost:7000/api";
-
+const AUTH_URL = "http://localhost:7000/api/auth";
+const PRODUCT_URL = "http://localhost:7000/api/products";
 export const loginUser = async (email, password) => {
-  const response = await axios.post(`${API_URL}/auth/login`, { email, password });
-  return response.data;
+  const response = await fetch(`${AUTH_URL}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  return response.json();
 };
 
 export const registerUser = async (username, email, password) => {
-  const response = await axios.post(`${API_URL}/auth/register`, { username, email, password });
-  return response.data;
+  const response = await fetch(`${AUTH_URL}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, email, password }),
+  });
+
+  return response.json();
+};
+export const getProducts = async () => {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(PRODUCT_URL, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
 };
 
-export const getProducts = async (token) => {
-  const response = await axios.get(`${API_URL}/products`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
+export const createProduct = async (productData) => {
+  const token = localStorage.getItem("token");
 
-export const createProduct = async (productData, token) => {
-  const response = await axios.post(`${API_URL}/products`, productData, {
-    headers: { Authorization: `Bearer ${token}` }
+  const response = await fetch(PRODUCT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(productData),
   });
-  return response.data;
+
+  return response.json();
 };
