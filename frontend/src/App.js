@@ -1,23 +1,48 @@
-import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
-import Navbar from "./components/Navbar";
+import AddProduct from "./components/AddProduct";
+import ProtectedRoute from "./components/ProtectedRoute";
+import "./App.css";
+
 function App() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
   return (
     <Router>
-      {user && <Navbar setUser={setUser} />}
       <Routes>
-        <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login setUser={setUser} />} />
-        <Route path="/register" element={<Register setUser={setUser} />} />
-        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" />} />
-        <Route path="/products" element={user ? <Products /> : <Navigate to="/" />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <Products />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/add-product"
+          element={
+            <ProtectedRoute>
+              <AddProduct />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
 }
+
 export default App;
