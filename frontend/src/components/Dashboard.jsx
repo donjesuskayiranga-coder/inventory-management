@@ -1,11 +1,18 @@
-import React from "react";
+import Navbar from "./Navbar";
 
 export default function Dashboard() {
-  const user = JSON.parse(localStorage.getItem("user"));
   return (
-    <div className="dashboard-container">
-      <h1>Welcome {user?.username}</h1>
-      <p>Role: {user?.role}</p>
-    </div>
+    <>
+      <Navbar />
+      <div className="dashboard">
+        <h1>Admin Dashboard</h1>
+        <div className="cards">
+          <div className="card">
+            <h3>Manage Products</h3>
+            <p>View, create and manage inventory items.</p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
