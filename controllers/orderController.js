@@ -2,19 +2,14 @@
 const Order = require("../models/order");
 exports.getOrders = async ( req, res) => {
     try {
-
         const orders = await Order.find({user:req.user.id}).populate("products.product");
         res.json(orders);
 
     } catch(err) {
 
         res.status(500).json({message:err.message});
-
     }
-
 };
-
-
 exports.getOrderById = async (req, res) => {
 
     try {
@@ -27,9 +22,6 @@ exports.getOrderById = async (req, res) => {
 
     }
 };
-
-
-
 exports.createOrder = async (req , res) => {
 
     try{
@@ -46,8 +38,6 @@ exports.createOrder = async (req , res) => {
 
     }
 };
-
-
 exports.updateOrder = async (req, res) => {
     try {
         const {status}  = req.body;
