@@ -1,52 +1,41 @@
 import { useState } from "react";
-import { loginUser } from "../api/api";
-import { useNavigate, Link } from "react-router-dom";
-
-export default function Login() {
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-
+  const handleLogin = async () => {
     try {
-      const data = await loginUser(email, password);
+      const response = await axios.post(
+        "http://localhost:7000/api/auth/login",
+        { email, password }
+      );
+
+      const data = response.data;
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
 
       if (data.role === "admin") {
-        navigate("/dashboard");
+        navigate("/admin");
       } else {
-        alert("Only admin allowed");
+        navigate("/products");
       }
-    } catch (err) {
+    } catch (error) {
       alert("Login failed");
     }
   };
 
   return (
-    <div className="auth-container">
-      <h2>Admin Login</h2>
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
-      <p>
-        No account? <Link to="/register">Register</Link>
-      </p>
+    <div>
+      <h2>Login</h2>
+      <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
+      <button onClick={handleLogin}>Login</button>
     </div>
   );
 }
+
+export default Login;
