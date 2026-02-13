@@ -1,60 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { getProducts } from "../api/api";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-const Products = () => {
+function Products() {
   const [products, setProducts] = useState([]);
-  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await getProducts();
-
-        console.log("Products response:", data);
-
-        if (Array.isArray(data)) {
-          setProducts(data);
-        } else {
-          setProducts([]);
-          setError("Failed to load products");
-        }
-
-      } catch (err) {
-        setError("Error fetching products");
-        setProducts([]);
+    axios.get("http://localhost:7000/api/products", {
+      headers: {
+        Authorization: localStorage.getItem("token")
       }
-    };
-
-    fetchProducts();
+    })
+    .then(res => setProducts(res.data))
+    .catch(() => alert("Failed to load products"));
   }, []);
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div>
       <h2>Products</h2>
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      {products.length === 0 && !error && <p>No products available</p>}
-
-      {products.map((product) => (
-        <div
-          key={product._id}
-          style={{
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "5px",
-          }}
-        >
-          <h3>{product.name}</h3>
-          <p><strong>SKU:</strong> {product.sku}</p>
-          <p><strong>Price:</strong> ${product.price}</p>
-          <p><strong>Quantity:</strong> {product.quantity}</p>
-          <p>{product.description}</p>
+      {products.map(product => (
+        <div key={product._id}>
+          <h4>{product.name}</h4>
+          <p>Price: ${product.price}</p>
+          <p>Quantity: {product.quantity}</p>
         </div>
       ))}
     </div>
   );
-};
+}
 
 export default Products;
