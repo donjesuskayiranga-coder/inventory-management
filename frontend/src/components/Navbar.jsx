@@ -1,22 +1,27 @@
 import { Link, useNavigate } from "react-router-dom";
 
-export default function Navbar() {
+function Navbar() {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
 
   const logout = () => {
     localStorage.clear();
-    navigate("/");
+    navigate("/login");
   };
 
   return (
-    <div className="navbar">
-      <h2>Inventory Admin</h2>
-      <div>
-        <Link to="/dashboard">Dashboard</Link>
-        <Link to="/products">Products</Link>
-        <Link to="/add-product">Add Product</Link>
-        <button onClick={logout}>Logout</button>
-      </div>
+    <div style={{ padding: 10, background: "#222", color: "white" }}>
+      <Link to="/products" style={{ color: "white", marginRight: 10 }}>Products</Link>
+
+      {role === "admin" && (
+        <>
+          <Link to="/admin" style={{ color: "white", marginRight: 10 }}>Admin</Link>
+        </>
+      )}
+
+      <button onClick={logout}>Logout</button>
     </div>
   );
 }
+
+export default Navbar;
