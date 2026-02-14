@@ -14,10 +14,8 @@ function Login() {
       );
 
       const data = response.data;
-
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
-
       if (data.role === "admin") {
         navigate("/admin");
       } else {
@@ -27,7 +25,6 @@ function Login() {
       alert("Login failed");
     }
   };
-
   return (
     <div>
       <h2>Login</h2>
@@ -37,5 +34,4 @@ function Login() {
     </div>
   );
 }
-
 export default Login;
