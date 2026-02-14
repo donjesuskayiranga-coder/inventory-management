@@ -2,21 +2,17 @@ import { useState } from "react";
 import { createProduct } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
-
 export default function AddProduct() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const navigate = useNavigate();
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
-
     await createProduct({ name, price, quantity }, token);
     navigate("/products");
   };
-
   return (
     <>
       <Navbar />
