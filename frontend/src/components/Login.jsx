@@ -12,7 +12,6 @@ function Login() {
         "http://localhost:7000/api/auth/login",
         { email, password }
       );
-
       const data = response.data;
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
