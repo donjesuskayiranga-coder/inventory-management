@@ -107,8 +107,8 @@ Make sure you have these installed:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/vaultiq.git
-cd vaultiq
+git clone https://github.com/donjesuskayiranga-coder/inventory-management
+cd inventory-api
 ```
 
 ### 2. Set up the Backend
