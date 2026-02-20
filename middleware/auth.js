@@ -12,9 +12,11 @@ const auth = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
+    
   } catch (error) {
-    return res.status(401).json({ message: "Token is not valid" });
+    return res.status(401).json({ message: "invalid token " });
   }
 };
+
 
 module.exports = auth;
