@@ -1,25 +1,69 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
+import "./App.css";
+
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { apiFetch } from "./api/index";
 
 import Login from "./components/Login";
 import Register from "./components/Register";
+import Navbar from "./components/Navbar";
+import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
 import AdminDashboard from "./components/AdminDashboard";
-import AdminProducts from "./components/AdminProducts";
-import AdminOrders from "./components/AdminOrders";
+import AdminProduct from "./components/AdminProducts";
+import AdminOrders, { MyOrders } from "./components/AdminOrders";
+import AdminUsers from "./components/AdminUsers";
 
-function App() {
+function AppShell() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [page, setPage] = useState(isAdmin ? "admin-overview" : "dashboard");
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    apiFetch("/orders").then(setOrders).catch(() => {});
+  }, [page]);
+
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+
+  const renderPage = () => {
+    switch (page) {
+      case "dashboard":      return <Dashboard />;
+      case "products":       return <Products />;
+      case "orders":         return <MyOrders />;
+      case "admin-overview": return <AdminDashboard />;
+      case "admin-products": return <AdminProduct />;
+      case "admin-orders":   return <AdminOrders />;
+      case "admin-users":    return <AdminUsers />;
+      default:               return <Dashboard />;
+    }
+  };
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/products" element={<AdminProducts />} />
-        <Route path="/admin/orders" element={<AdminOrders />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="layout">
+      <Navbar page={page} setPage={setPage} pendingCount={pendingCount} />
+      <div className="main">{renderPage()}</div>
+    </div>
   );
 }
 
-export default App;
+function App() {
+  const { user } = useAuth();
+  const [mode, setMode] = useState("login");
+
+  if (!user) {
+    return mode === "login"
+      ? <Login onSwitch={() => setMode("register")} />
+      : <Register onSwitch={() => setMode("login")} />;
+  }
+
+  return <AppShell />;
+}
+
+export default function Root() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
