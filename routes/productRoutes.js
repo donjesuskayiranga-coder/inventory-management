@@ -24,6 +24,7 @@ router.post("/", auth, admin, async (req, res) => {
         
     }
 })
+
 router.put("/:id", auth, updateProduct);
 router.delete("/:id", auth, deleteProduct);
 module.exports = router;
