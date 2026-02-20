@@ -1,62 +1,78 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";
+import AddProduct from "./AddProduct";
 
-function AdminProducts() {
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+
+export default function AdminProducts() {
   const [products, setProducts] = useState([]);
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [price, setPrice] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
 
-  const loadProducts = () => {
-    axios.get("http://localhost:7000/api/products", {
-      headers: {
-        Authorization: localStorage.getItem("token")
-      }
-    })
-    .then(res => setProducts(res.data))
-    .catch(() => alert("Failed to load products"));
+  const load = () => {
+    setLoading(true);
+    apiFetch("/products")
+      .then((p) => { setProducts(p); setLoading(false); })
+      .catch(() => setLoading(false));
   };
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  const openCreate = () => { setEditProduct(null); setShowModal(true); };
+  const openEdit = (p) => { setEditProduct(p); setShowModal(true); };
 
-  const addProduct = async () => {
-    try {
-      await axios.post(
-        "http://localhost:7000/api/products",
-        { name, sku, price, quantity },
-        {
-          headers: {
-            Authorization: localStorage.getItem("token")
-          }
-        }
-      );
-
-      loadProducts();
-    } catch {
-      alert("Failed to add product");
-    }
+  const del = async (id) => {
+    try { await apiFetch(`/products/${id}`, { method: "DELETE" }); load(); }
+    catch (e) { alert(e.message); }
   };
 
   return (
     <div>
-      <h2>Admin Products</h2>
-
-      <input placeholder="Name" onChange={e => setName(e.target.value)} />
-      <input placeholder="SKU" onChange={e => setSku(e.target.value)} />
-      <input placeholder="Price" onChange={e => setPrice(e.target.value)} />
-      <input placeholder="Quantity" onChange={e => setQuantity(e.target.value)} />
-      <button onClick={addProduct}>Add Product</button>
-
-      {products.map(product => (
-        <div key={product._id}>
-          {product.name} - ${product.price}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Manage Products</div>
+          <div className="page-sub">{products.length} products in inventory</div>
         </div>
-      ))}
+        <button className="btn btn-primary" onClick={openCreate}>+ Add Product</button>
+      </div>
+      <div className="content">
+        <div className="admin-banner">🔐 Admin — Create, edit, and delete products</div>
+        <div className="card">
+          {loading ? <Loading /> : products.length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">📦</div>
+              <div className="empty-title">No products yet</div>
+              <div className="empty-sub">Click "Add Product" to get started</div>
+            </div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Name</th><th>SKU</th><th>Price</th><th>Quantity</th><th>Description</th><th>Actions</th></tr></thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p._id}>
+                    <td className="fw-700">{p.name}</td>
+                    <td className="mono text-dim fs-12">{p.sku}</td>
+                    <td className="text-accent fw-700 mono">${Number(p.price).toFixed(2)}</td>
+                    <td><span className={p.quantity === 0 ? "text-danger fw-700" : p.quantity <= 5 ? "text-warning fw-700" : "text-muted"}>{p.quantity}</span></td>
+                    <td className="text-muted fs-12" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description || "—"}</td>
+                    <td>
+                      <div className="actions-cell">
+                        <button className="btn btn-icon" onClick={() => openEdit(p)}>✏️</button>
+                        <button className="btn btn-icon" onClick={() => del(p._id)} style={{ color: "var(--danger)" }}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+      {showModal && (
+        <AddProduct editProduct={editProduct} onClose={() => setShowModal(false)} onSaved={load} />
+      )}
     </div>
   );
 }
-
-export default AdminProducts;
