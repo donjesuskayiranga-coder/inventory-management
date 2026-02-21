@@ -7,15 +7,15 @@ export default function Navbar({ page, setPage, pendingCount }) {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-box">📦</div>
-        <div className="sidebar-logo-name">Invent<span>ory</span></div>
+        <div className="sidebar-logo-box">🏛️</div>
+        <div className="sidebar-logo-name">Vault<span>IQ</span></div>
       </div>
 
       <div className="nav-label">Main</div>
       {[
-        { id: "dashboard", icon: "🏠", label: "Dashboard" },
-        { id: "products", icon: "📦", label: "Products" },
-        { id: "orders", icon: "🛒", label: "My Orders", badge: pendingCount || 0 },
+        { id: "dashboard", icon: "⊞", label: "Dashboard" },
+        { id: "products", icon: "◈", label: "Products" },
+        { id: "orders", icon: "◎", label: "My Orders", badge: pendingCount || 0 },
       ].map((n) => (
         <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
           <span className="nav-icon">{n.icon}</span>
@@ -25,26 +25,26 @@ export default function Navbar({ page, setPage, pendingCount }) {
       ))}
 
       {isAdmin && (
-  <>
-    <div className="nav-divider" />
-    <div className="nav-label">Admin Panel</div>
-    {[
-      { id: "admin-overview", icon: "📊", label: "Overview" },
-      { id: "admin-products", icon: "🗂️", label: "Manage Products" },
-      { id: "admin-orders", icon: "📋", label: "All Orders" },
-      { id: "admin-users", icon: "👥", label: "Users" },
-    ].map((n) => (
-      <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
-        <span className="nav-icon">{n.icon}</span>
-        {n.label}
-      </button>
-    ))}
-  </>
-)}
+        <>
+          <div className="nav-divider" />
+          <div className="nav-label">Admin Panel</div>
+          {[
+            { id: "admin-overview", icon: "◉", label: "Overview" },
+            { id: "admin-products", icon: "▦", label: "Manage Products" },
+            { id: "admin-orders", icon: "≡", label: "All Orders" },
+            { id: "admin-users", icon: "◍", label: "Users" },
+          ].map((n) => (
+            <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+              <span className="nav-icon">{n.icon}</span>
+              {n.label}
+            </button>
+          ))}
+        </>
+      )}
 
       <div className="sidebar-footer">
         <div className="user-card">
-          <div className={`user-avatar ${isAdmin ? "admin" : ""}`}>
+          <div className="user-avatar">
             {user?.username?.[0]?.toUpperCase()}
           </div>
           <div>
@@ -53,7 +53,7 @@ export default function Navbar({ page, setPage, pendingCount }) {
           </div>
         </div>
         <button className="nav-btn" onClick={logout}>
-          <span className="nav-icon">🚪</span>Sign out
+          <span className="nav-icon">→</span>Sign out
         </button>
       </div>
     </div>

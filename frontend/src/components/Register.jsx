@@ -28,11 +28,11 @@ export default function Register({ onSwitch }) {
     <div className="auth-page">
       <div className="auth-left">
         <div className="auth-logo">
-          <div className="auth-logo-box">📦</div>
-          <div className="auth-logo-name">Invent<span>ory</span></div>
+          <div className="auth-logo-box">🏛️</div>
+          <div className="auth-logo-name">Vault<span>IQ</span></div>
         </div>
-        <div className="auth-headline">Start tracking<br />your<br /><em>inventory</em> today.</div>
-        <div className="auth-sub-text">Join and get instant access to product tracking, smart order management, and a powerful admin panel.</div>
+        <div className="auth-headline">Join<br /><em>VaultIQ</em><br />Today.</div>
+        <div className="auth-sub-text">Get instant access to premium inventory tracking, smart order management, and powerful analytics built for serious operations.</div>
         <div className="auth-features">
           {["Free to get started", "Instant setup", "Full admin capabilities", "Secure JWT authentication"].map((f) => (
             <div className="auth-feature" key={f}><div className="auth-feature-dot" />{f}</div>
