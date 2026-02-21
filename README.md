@@ -1,4 +1,4 @@
-# VaultIQ — Inventory Management System
+# VaultIQ  Inventory Management System
 
 > A premium full-stack inventory management system built with Node.js, Express, MongoDB, and React. Designed for precision in every transaction and clarity in every decision.
 
@@ -7,7 +7,7 @@
 ## 👤 Author
 
 **KAYIRANGA Jesus**  
-CEO & Founder — VaultIQ  
+CEO & Founder (VaultIQ)  
 Built and designed from scratch.
 
 ---
