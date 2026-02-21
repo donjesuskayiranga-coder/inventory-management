@@ -4,8 +4,6 @@ require('dotenv').config();
 const connectDB = require("../config/database");
 const User = require("../models/user");
 const Product = require("../models/product");
-
-
 async function seed() {
     try {
         await connectDB();
