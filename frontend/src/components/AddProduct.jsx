@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { apiFetch } from "../api/index";
-
 function Modal({ title, onClose, children }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -11,7 +10,6 @@ function Modal({ title, onClose, children }) {
     </div>
   );
 }
-
 export default function AddProduct({ onClose, onSaved, editProduct = null }) {
   const [form, setForm] = useState({
     name: editProduct?.name || "",
@@ -22,9 +20,7 @@ export default function AddProduct({ onClose, onSaved, editProduct = null }) {
   });
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
-
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-
   const save = async () => {
     if (!form.name || !form.sku || !form.price) return setErr("Name, SKU and Price are required");
     setSaving(true);
@@ -44,7 +40,6 @@ export default function AddProduct({ onClose, onSaved, editProduct = null }) {
       setSaving(false);
     }
   };
-
   return (
     <Modal title={editProduct ? "Edit Product" : "Add Product"} onClose={onClose}>
       {err && <div className="alert alert-error">{err}</div>}
