@@ -1,16 +1,13 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../api/index";
-
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
-
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [updating, setUpdating] = useState(null);
-
   const load = () => {
     setLoading(true);
     apiFetch("/orders")
@@ -18,7 +15,6 @@ export default function AdminOrders() {
       .catch(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
-
   const updateStatus = async (id, status) => {
     setUpdating(id);
     try {
@@ -27,16 +23,13 @@ export default function AdminOrders() {
     } catch (e) { alert(e.message); }
     finally { setUpdating(null); }
   };
-
   const del = async (id) => {
     try { await apiFetch(`/orders/${id}`, { method: "DELETE" }); load(); }
     catch (e) { alert(e.message); }
   };
-
   const counts = { all: orders.length, pending: 0, completed: 0, cancelled: 0 };
   orders.forEach((o) => { if (counts[o.status] !== undefined) counts[o.status]++; });
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
-
   return (
     <div>
       <div className="page-header">
@@ -85,11 +78,9 @@ export default function AdminOrders() {
     </div>
   );
 }
-
 export function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const load = () => {
     setLoading(true);
     apiFetch("/orders")
@@ -109,7 +100,6 @@ export function MyOrders() {
     try { await apiFetch(`/orders/${id}`, { method: "DELETE" }); load(); }
     catch (e) { alert(e.message); }
   };
-
   return (
     <div>
       <div className="page-header">

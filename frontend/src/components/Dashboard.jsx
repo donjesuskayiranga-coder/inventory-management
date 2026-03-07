@@ -1,33 +1,27 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../api/index";
-
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
-
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
-
   useEffect(() => {
     Promise.all([apiFetch("/products"), apiFetch("/orders")])
       .then(([products, orders]) => setData({ products, orders }))
       .catch(() => setData({ products: [], orders: [] }));
   }, []);
-
   if (!data) return (
     <>
       <div className="page-header"><div className="page-title">Dashboard</div></div>
       <Loading />
     </>
   );
-
   const { products, orders } = data;
   const totalValue = products.reduce((s, p) => s + p.price * p.quantity, 0);
   const pending = orders.filter((o) => o.status === "pending").length;
   const lowStock = products.filter((p) => p.quantity <= 5).length;
-
   return (
     <div>
       <div className="page-header">
