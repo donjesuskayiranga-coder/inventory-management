@@ -7,7 +7,6 @@ console.log("JWT_EXPIRES_IN =", process.env.JWT_EXPIRES_IN);
 exports.register = async (req,res) => {
     try {
         const {username, email, password} =req.body;
-
         const userExists = await User.findOne({ email});
         if (userExists) {
             return res.status(400).json({message: "User already exists"});

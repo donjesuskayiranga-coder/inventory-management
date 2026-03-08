@@ -20,7 +20,6 @@ export default function AdminDashboard() {
       <Loading />
     </>
   );
-
   const { products, orders } = data;
   const totalValue = products.reduce((s, p) => s + p.price * p.quantity, 0);
   const pending = orders.filter((o) => o.status === "pending").length;
@@ -30,7 +29,6 @@ export default function AdminDashboard() {
   const topByPrice = [...products].sort((a, b) => b.price - a.price).slice(0, 5);
   const topByQty = [...products].sort((a, b) => b.quantity - a.quantity).slice(0, 5);
   const pct = (n) => (orders.length ? Math.round((n / orders.length) * 100) : 0);
-
   return (
     <div>
       <div className="page-header">
@@ -49,7 +47,6 @@ export default function AdminDashboard() {
           <div className="stat-card red"><div className="stat-card-icon">❌</div><div className="stat-card-value">{cancelled}</div><div className="stat-card-label">Cancelled</div></div>
           <div className="stat-card purple"><div className="stat-card-icon">💰</div><div className="stat-card-value">${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</div><div className="stat-card-label">Inventory Value</div></div>
         </div>
-
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header"><div className="card-title">📊 Order Status Breakdown</div></div>
           <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
