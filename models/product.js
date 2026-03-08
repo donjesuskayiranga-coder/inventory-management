@@ -6,5 +6,4 @@ price: {type:Number, required:true},
 quantity: {type:Number, default:0},
 description: {type:String },
 }, {timestamps:true});
-
 module.exports = mongoose.model("Product", ProductSchema);
