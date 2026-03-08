@@ -4,18 +4,15 @@ import { apiFetch } from "../api/index";
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
-
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   useEffect(() => {
     apiFetch("/auth/users")
       .then((data) => { setUsers(data); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
   }, []);
-
   return (
     <div>
       <div className="page-header">
