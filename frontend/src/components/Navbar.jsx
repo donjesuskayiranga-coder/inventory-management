@@ -13,6 +13,7 @@ export default function Navbar({ page, setPage, pendingCount }) {
 
       <div className="nav-label">Main</div>
       {[
+        
         { id: "dashboard", icon: "⊞", label: "Dashboard" },
         { id: "products", icon: "◈", label: "Products" },
         { id: "orders", icon: "◎", label: "My Orders", badge: pendingCount || 0 },
