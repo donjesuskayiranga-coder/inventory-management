@@ -11,6 +11,7 @@ export default function AdminOrders() {
   const load = () => {
     setLoading(true);
     apiFetch("/orders")
+    
       .then((o) => { setOrders(o); setLoading(false); })
       .catch(() => setLoading(false));
   };
