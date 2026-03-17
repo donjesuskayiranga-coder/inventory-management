@@ -54,6 +54,7 @@ export default function Register({ onSwitch }) {
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
+            
             <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={set("password")} onKeyDown={(e) => e.key === "Enter" && submit()} />
           </div>
           <button className="btn btn-primary btn-full btn-lg" onClick={submit} disabled={loading}>
