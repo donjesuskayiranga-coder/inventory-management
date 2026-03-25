@@ -89,7 +89,6 @@ export function MyOrders() {
       .catch(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
-
   const cancel = async (id) => {
     try {
       await apiFetch(`/orders/${id}`, { method: "PUT", body: JSON.stringify({ status: "cancelled" }) });
