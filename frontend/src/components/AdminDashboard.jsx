@@ -111,7 +111,6 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
-
         <div className="card" style={{ marginTop: 20 }}>
           <div className="card-header"><div className="card-title">📦 Products by Stock Level</div></div>
           <table className="table">
