@@ -1,0 +1,121 @@
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* Mobile overlay when sidebar is open */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99;
+}
+
+/* Mobile top bar */
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.mobile-topbar-logo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mobile-topbar-logo span { color: var(--gold); }
+
+@media (max-width: 768px) {
+  /* Show mobile top bar */
+  .mobile-topbar { display: flex; }
+
+  /* Show hamburger */
+  .hamburger { display: block; }
+
+  /* Layout stacks vertically */
+  .layout {
+    flex-direction: column;
+  }
+
+  /* Sidebar becomes a slide-in drawer */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    height: 100vh;
+    width: 240px;
+    z-index: 100;
+    transition: left 0.25s ease;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .sidebar-overlay.open {
+    display: block;
+  }
+
+  /* Main content takes full width */
+  .main {
+    width: 100%;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* Auth pages stack vertically on mobile */
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-left {
+    display: none; /* Hide branding panel on mobile */
+  }
+
+  .auth-right {
+    padding: 32px 20px;
+  }
+
+  /* Tables scroll horizontally on mobile */
+  .card {
+    overflow-x: auto;
+  }
+
+  /* Stats grid becomes 2 columns on mobile */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Two-col becomes single col on mobile */
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Page header stacks on mobile */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Single column stats on very small screens */
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

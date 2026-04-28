@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { apiFetch } from "../api/index";
 function Modal({ title, onClose, children }) {
+  
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -10,6 +11,7 @@ function Modal({ title, onClose, children }) {
     </div>
   );
 }
+
 export default function AddProduct({ onClose, onSaved, editProduct = null }) {
   const [form, setForm] = useState({
     name: editProduct?.name || "",

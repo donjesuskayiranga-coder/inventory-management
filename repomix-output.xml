@@ -1,0 +1,2608 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/.gitignore
+backend/package.json
+backend/README.md
+backend/scripts/seed.js
+backend/src/config/database.ts
+backend/src/controllers/authcontroller.ts
+backend/src/controllers/orderController.ts
+backend/src/controllers/prodController.ts
+backend/src/middleware/admin.ts
+backend/src/middleware/auth.ts
+backend/src/models/order.ts
+backend/src/models/product.ts
+backend/src/models/user.ts
+backend/src/routes/authRoutes.ts
+backend/src/routes/orderRoutes.ts
+backend/src/routes/productRoutes.ts
+backend/src/server.ts
+backend/src/types/index.ts
+backend/tsconfig.json
+frontend/.gitignore
+frontend/package.json
+frontend/public/favicon.ico
+frontend/public/index.html
+frontend/public/logo192.png
+frontend/public/logo512.png
+frontend/public/manifest.json
+frontend/public/robots.txt
+frontend/README.md
+frontend/src/api/index.js
+frontend/src/App.css
+frontend/src/App.js
+frontend/src/App.test.js
+frontend/src/components/AddProduct.jsx
+frontend/src/components/AdminDashboard.jsx
+frontend/src/components/AdminOrders.jsx
+frontend/src/components/AdminProducts.jsx
+frontend/src/components/AdminUsers.jsx
+frontend/src/components/Dashboard.jsx
+frontend/src/components/Login.jsx
+frontend/src/components/Navbar.jsx
+frontend/src/components/Products.jsx
+frontend/src/components/ProtectedRoute.jsx
+frontend/src/components/Register.jsx
+frontend/src/context/AuthContext.jsx
+frontend/src/index.css
+frontend/src/index.js
+frontend/src/logo.svg
+frontend/src/reportWebVitals.js
+frontend/src/setupTests.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/src/config/database.ts">
+import mongoose from "mongoose"
+
+const connectDB = async (): Promise<void> => {
+    const conn = await mongoose.connect(process.env.MONGO_URI as string)
+    console.log(`MongoDB Connected: ${conn.connection.host}`)
+}
+
+export default connectDB
+</file>
+
+<file path="backend/src/controllers/authcontroller.ts">
+import { Response } from "express"
+import jwt from "jsonwebtoken"
+import bcrypt from "bcryptjs"
+import User from "../models/user"
+import { AuthRequest } from "../types"
+
+// helper — signs a JWT token
+const signToken = (id: string, role: string): string => {
+  return jwt.sign(
+    { id, role },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "7d" }
+  )
+}
+
+// POST /api/auth/register
+export const register = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { username, email, password } = req.body as {
+      username: string
+      email: string
+      password: string
+    }
+
+    const userExists = await User.findOne({ email })
+    if (userExists) {
+      res.status(400).json({ message: "Email already in use" })
+      return
+    }
+
+    const user = await User.create({ username, email, password })
+
+    res.status(201).json({
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    })
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+// POST /api/auth/login
+export const login = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body as {
+      email: string
+      password: string
+    }
+
+    // select("+password") because password has select:false in model
+    const user = await User.findOne({ email }).select("+password")
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      res.status(401).json({ message: "Wrong email or password" })
+      return
+    }
+
+    const token = signToken(user._id.toString(), user.role)
+
+    res.json({
+      token,
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    })
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+// GET /api/auth/users  (admin only)
+export const getUsers = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const users = await User.find().select("-password")
+    res.json(users)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+</file>
+
+<file path="backend/src/controllers/orderController.ts">
+// src/controllers/orderController.ts
+
+import { Response } from "express"
+import Order from "../models/order"
+import { AuthRequest } from "../types"
+
+export const getOrders = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const filter = req.user?.role === "admin" ? {} : { user: req.user?.id }
+    const orders = await Order.find(filter).populate("products.product")
+    res.json(orders)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const getOrderById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const order = await Order.findById(req.params.id).populate("products.product")
+    if (!order) {
+      res.status(404).json({ message: "Order not found" })
+      return
+    }
+    res.json(order)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { products } = req.body as { products: { product: string; quantity: number }[] }
+    const order = await Order.create({ user: req.user?.id, products })
+    res.status(201).json(order)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const updateOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { status } = req.body as { status: "pending" | "completed" | "cancelled" }
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    )
+    if (!order) {
+      res.status(404).json({ message: "Order not found" })
+      return
+    }
+    res.json(order)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const deleteOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id)
+    if (!order) {
+      res.status(404).json({ message: "Order not found" })
+      return
+    }
+    res.json({ message: "Order deleted" })
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+</file>
+
+<file path="backend/src/controllers/prodController.ts">
+// src/controllers/prodController.ts
+
+import { Response } from "express"
+import Product from "../models/product"
+import { AuthRequest } from "../types"
+
+export const getProducts = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const products = await Product.find()
+    res.json(products)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const getProductById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findById(req.params.id)
+    if (!product) {
+      res.status(404).json({ message: "Product not found" })
+      return
+    }
+    res.json(product)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const createProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, sku, price, quantity, description } = req.body as {
+      name: string
+      sku: string
+      price: number
+      quantity: number
+      description?: string
+    }
+
+    const product = await Product.create({ name, sku, price, quantity, description })
+    res.status(201).json(product)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const updateProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    )
+    if (!product) {
+      res.status(404).json({ message: "Product not found" })
+      return
+    }
+    res.json(product)
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const deleteProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id)
+    if (!product) {
+      res.status(404).json({ message: "Product not found" })
+      return
+    }
+    res.status(204).send()
+  } catch (error) {
+    const err = error as Error
+    res.status(500).json({ message: err.message })
+  }
+}
+</file>
+
+<file path="backend/src/middleware/admin.ts">
+import { Response, NextFunction} from "express"
+import {AuthRequest } from "../types"
+
+const admin = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  if (req.user?.role !=="admin") {
+    res.status(403).json({ message: "Admin access only"})
+    return 
+  }
+  next()
+}
+
+
+export default admin
+</file>
+
+<file path="backend/src/middleware/auth.ts">
+import {Response, NextFunction} from "express"
+import jwt from "jsonwebtoken"
+import {AuthRequest} from "../types"
+
+interface  JwtPayload {
+  id: string
+  role: "user" | "admin"
+
+}
+
+const auth = (req: AuthRequest, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ message: "Not logged in" })
+    return
+  }
+  const token = authHeader.split(" ")[1]
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload
+    req.user = {id: decoded.id, role:decoded.role }
+    next()
+  } catch {
+    res.status(401).json({ message: "Invalid token" })
+
+  }
+}
+
+  export default auth
+</file>
+
+<file path="backend/src/models/order.ts">
+import mongoose, {Schema } from "mongoose";
+import {IOrder } from "../types"
+
+const orderSchema = new Schema<IOrder>({
+    user: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+    },
+    products: [
+        {
+            product:  { type:Schema.Types.ObjectId, ref: "Product"},
+            quantity: { type: Number, required: true},
+        },
+    ],
+    status: {
+        type: String,
+        enum: ["pending", "completed", "cancelled"],
+        default: "pending",
+    },
+
+    },
+    {timestamps: true }
+)
+
+
+export default mongoose.model<IOrder>("Order", orderSchema)
+</file>
+
+<file path="backend/src/models/product.ts">
+import mongoose,  {Schema} from "mongoose"
+import {IProduct } from "../types"
+
+const productSchema = new Schema<IProduct>(
+    {
+        name:  {type:String, required:true},
+        sku:   {type:String, required:true, unique:true},
+        price: {type:Number, required:true},
+        quantity: {type:Number, required:true},
+        description:{type:String},
+    },
+    {timestamps:true }
+)
+
+export default mongoose.model<IProduct>("Product", productSchema)
+</file>
+
+<file path="backend/src/models/user.ts">
+import mongoose, { Schema, CallbackError } from "mongoose"
+import bcrypt from "bcryptjs"
+import { IUser } from "../types"
+
+const userSchema = new Schema<IUser>(
+  {
+    username: { type: String, required: true, trim: true },
+    email:    { type: String, required: true, unique: true, lowercase: true },
+    password: { type: String, required: true, select: false },
+    role:     { type: String, enum: ["user", "admin"], default: "user" },
+  },
+  { timestamps: true }
+)
+
+userSchema.pre("save", async function (next: (err?: CallbackError) => void) {
+  if (!this.isModified("password")) return next()
+  this.password = await bcrypt.hash(this.password, 10)
+  next()
+})
+
+export default mongoose.model<IUser>("User", userSchema)
+</file>
+
+<file path="backend/src/routes/authRoutes.ts">
+import {Router} from "express"
+import { register, login, getUsers } from "../controllers/authcontroller"
+import auth from "../middleware/auth"
+import admin from "../middleware/admin"
+
+const router = Router()
+
+router.post("/register", register)
+router.post("/login", login)
+router.get("/users", auth, admin, getUsers)
+
+export default router
+</file>
+
+<file path="backend/src/routes/orderRoutes.ts">
+import { Router } from "express"
+import {
+  getOrders,
+  getOrderById,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+} from "../controllers/orderController"
+import auth from "../middleware/auth"
+import admin from "../middleware/admin"
+
+const router = Router()
+
+router.get("/", auth, getOrders)
+router.get("/:id", auth, getOrderById)
+router.post("/", auth, createOrder)
+router.put("/:id", auth, admin, updateOrder)
+router.delete("/:id", auth, admin, deleteOrder)
+
+export default router
+</file>
+
+<file path="backend/src/routes/productRoutes.ts">
+import { Router } from "express"
+import {
+  getProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "../controllers/prodController"
+import auth from "../middleware/auth"
+import admin from "../middleware/admin"
+
+const router = Router()
+
+router.get("/", auth, getProducts)
+router.get("/:id", auth, getProductById)
+router.post("/", auth, admin, createProduct)
+router.put("/:id", auth, admin, updateProduct)
+router.delete("/:id", auth, admin, deleteProduct)
+
+export default router
+</file>
+
+<file path="backend/src/server.ts">
+import "dotenv/config"
+import express from "express"
+import cors from "cors"
+import helmet from "helmet"
+import connectDB from "./config/database"
+import authRoutes from "./routes/authRoutes"
+import productRoutes from "./routes/productRoutes"
+import orderRoutes from "./routes/orderRoutes"
+import morgan from "morgan"
+
+
+connectDB()
+
+const app = express()
+app.use(helmet())
+app.use(morgan("dev"))
+app.use(cors())
+app.use(express.json())
+
+app.use("/api/auth", authRoutes)
+app.use("/api/products", productRoutes)
+app.use("/api/orders", orderRoutes)
+
+
+app.get("/", (req, res) => {
+    res.send("VaultIQ is running")
+
+})
+
+app.all("*", (req, res) => {
+    res.status(404).json( { message: `Route ${req.url} not found`})
+
+})
+
+const PORT = process.env.PORT || 7000
+app.listen( PORT, () => {
+    console.log(`server running on http: //localhost:${PORT}`)
+})
+</file>
+
+<file path="backend/src/types/index.ts">
+import { Request } from "express"
+import { Document, Types } from "mongoose"
+
+export interface IUser extends Document {
+  username: string
+  email: string
+  password: string
+  role: "user" | "admin"
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface IProduct extends Document {
+  name: string
+  sku: string
+  price: number
+  quantity: number
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface IOrderItem {
+  product: Types.ObjectId
+  quantity: number
+}
+
+export interface IOrder extends Document {
+  user: Types.ObjectId
+  products: IOrderItem[]
+  status: "pending" | "completed" | "cancelled"
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string
+    role: "user" | "admin"
+  }
+}
+</file>
+
+<file path="backend/tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*", "src/server.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+</file>
+
+<file path="frontend/.gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "inventory-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.13.5",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0",
+    "react-scripts": "^5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+</file>
+
+<file path="frontend/public/index.html">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+</html>
+</file>
+
+<file path="frontend/public/manifest.json">
+{
+  "short_name": "React App",
+  "name": "Create React App Sample",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
+</file>
+
+<file path="frontend/public/robots.txt">
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow:
+</file>
+
+<file path="frontend/README.md">
+# Getting Started with Create React App
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Available Scripts
+
+In the project directory, you can run:
+
+### `npm start`
+
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
+
+### `npm test`
+
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+
+### `npm run build`
+
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
+
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### `npm run eject`
+
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+</file>
+
+<file path="frontend/src/index.css">
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+</file>
+
+<file path="frontend/src/index.js">
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+</file>
+
+<file path="frontend/src/logo.svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841.9 595.3"><g fill="#61DAFB"><path d="M666.3 296.5c0-32.5-40.7-63.3-103.1-82.4 14.4-63.6 8-114.2-20.2-130.4-6.5-3.8-14.1-5.6-22.4-5.6v22.3c4.6 0 8.3.9 11.4 2.6 13.6 7.8 19.5 37.5 14.9 75.7-1.1 9.4-2.9 19.3-5.1 29.4-19.6-4.8-41-8.5-63.5-10.9-13.5-18.5-27.5-35.3-41.6-50 32.6-30.3 63.2-46.9 84-46.9V78c-27.5 0-63.5 19.6-99.9 53.6-36.4-33.8-72.4-53.2-99.9-53.2v22.3c20.7 0 51.4 16.5 84 46.6-14 14.7-28 31.4-41.3 49.9-22.6 2.4-44 6.1-63.6 11-2.3-10-4-19.7-5.2-29-4.7-38.2 1.1-67.9 14.6-75.8 3-1.8 6.9-2.6 11.5-2.6V78.5c-8.4 0-16 1.8-22.6 5.6-28.1 16.2-34.4 66.7-19.9 130.1-62.2 19.2-102.7 49.9-102.7 82.3 0 32.5 40.7 63.3 103.1 82.4-14.4 63.6-8 114.2 20.2 130.4 6.5 3.8 14.1 5.6 22.5 5.6 27.5 0 63.5-19.6 99.9-53.6 36.4 33.8 72.4 53.2 99.9 53.2 8.4 0 16-1.8 22.6-5.6 28.1-16.2 34.4-66.7 19.9-130.1 62-19.1 102.5-49.9 102.5-82.3zm-130.2-66.7c-3.7 12.9-8.3 26.2-13.5 39.5-4.1-8-8.4-16-13.1-24-4.6-8-9.5-15.8-14.4-23.4 14.2 2.1 27.9 4.7 41 7.9zm-45.8 106.5c-7.8 13.5-15.8 26.3-24.1 38.2-14.9 1.3-30 2-45.2 2-15.1 0-30.2-.7-45-1.9-8.3-11.9-16.4-24.6-24.2-38-7.6-13.1-14.5-26.4-20.8-39.8 6.2-13.4 13.2-26.8 20.7-39.9 7.8-13.5 15.8-26.3 24.1-38.2 14.9-1.3 30-2 45.2-2 15.1 0 30.2.7 45 1.9 8.3 11.9 16.4 24.6 24.2 38 7.6 13.1 14.5 26.4 20.8 39.8-6.3 13.4-13.2 26.8-20.7 39.9zm32.3-13c5.4 13.4 10 26.8 13.8 39.8-13.1 3.2-26.9 5.9-41.2 8 4.9-7.7 9.8-15.6 14.4-23.7 4.6-8 8.9-16.1 13-24.1zM421.2 430c-9.3-9.6-18.6-20.3-27.8-32 9 .4 18.2.7 27.5.7 9.4 0 18.7-.2 27.8-.7-9 11.7-18.3 22.4-27.5 32zm-74.4-58.9c-14.2-2.1-27.9-4.7-41-7.9 3.7-12.9 8.3-26.2 13.5-39.5 4.1 8 8.4 16 13.1 24 4.7 8 9.5 15.8 14.4 23.4zM420.7 163c9.3 9.6 18.6 20.3 27.8 32-9-.4-18.2-.7-27.5-.7-9.4 0-18.7.2-27.8.7 9-11.7 18.3-22.4 27.5-32zm-74 58.9c-4.9 7.7-9.8 15.6-14.4 23.7-4.6 8-8.9 16-13 24-5.4-13.4-10-26.8-13.8-39.8 13.1-3.1 26.9-5.8 41.2-7.9zm-90.5 125.2c-35.4-15.1-58.3-34.9-58.3-50.6 0-15.7 22.9-35.6 58.3-50.6 8.6-3.7 18-7 27.7-10.1 5.7 19.6 13.2 40 22.5 60.9-9.2 20.8-16.6 41.1-22.2 60.6-9.9-3.1-19.3-6.5-28-10.2zM310 490c-13.6-7.8-19.5-37.5-14.9-75.7 1.1-9.4 2.9-19.3 5.1-29.4 19.6 4.8 41 8.5 63.5 10.9 13.5 18.5 27.5 35.3 41.6 50-32.6 30.3-63.2 46.9-84 46.9-4.5-.1-8.3-1-11.3-2.7zm237.2-76.2c4.7 38.2-1.1 67.9-14.6 75.8-3 1.8-6.9 2.6-11.5 2.6-20.7 0-51.4-16.5-84-46.6 14-14.7 28-31.4 41.3-49.9 22.6-2.4 44-6.1 63.6-11 2.3 10.1 4.1 19.8 5.2 29.1zm38.5-66.7c-8.6 3.7-18 7-27.7 10.1-5.7-19.6-13.2-40-22.5-60.9 9.2-20.8 16.6-41.1 22.2-60.6 9.9 3.1 19.3 6.5 28.1 10.2 35.4 15.1 58.3 34.9 58.3 50.6-.1 15.7-23 35.6-58.4 50.6zM320.8 78.4z"/><circle cx="420.9" cy="296.5" r="45.7"/><path d="M520.5 78.1z"/></g></svg>
+</file>
+
+<file path="frontend/src/reportWebVitals.js">
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+</file>
+
+<file path="frontend/src/setupTests.js">
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+</file>
+
+<file path="backend/.gitignore">
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# Build folders
+build/
+dist/
+
+# OS files
+.DS_Store
+</file>
+
+<file path="backend/package.json">
+{
+  "name": "inventory-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node scripts/seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.6",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
+</file>
+
+<file path="backend/README.md">
+# VaultIQ — Inventory Management System
+
+> A premium full-stack inventory management system built with Node.js, Express, MongoDB, and React. Designed for precision in every transaction and clarity in every decision.
+
+---
+
+## 👤 Author
+
+**KAYIRANGA Jesus**  
+CEO & Founder — VaultIQ  
+Built and designed from scratch.
+
+---
+
+## 📌 Project Overview
+
+VaultIQ is a role-based inventory management web application that allows businesses to track products, manage stock levels, and handle orders — all through a clean, premium Black & Gold interface.
+
+There are two types of users in the system:
+- **Admin** — has full control over products, orders, and users
+- **User** — can browse products and place/manage their own orders
+
+---
+
+## 🗂️ Project Structure
+```
+VaultIQ/
+├── inventory-api/                  # Backend (Node.js + Express)
+│   ├── config/
+│   │   └── database.js             # MongoDB connection
+│   ├── controllers/
+│   │   ├── authController.js       # Register & login logic
+│   │   ├── prodController.js       # Product CRUD logic
+│   │   └── orderController.js      # Order CRUD logic
+│   ├── middleware/
+│   │   ├── auth.js                 # JWT authentication middleware
+│   │   └── admin.js                # Admin role guard middleware
+│   ├── models/
+│   │   ├── user.js                 # User schema
+│   │   ├── product.js              # Product schema
+│   │   └── order.js                # Order schema
+│   ├── routes/
+│   │   ├── authRoutes.js           # Auth endpoints
+│   │   ├── productRoutes.js        # Product endpoints
+│   │   └── orderRoutes.js          # Order endpoints
+│   ├── .env                        # Environment variables
+│   └── server.js                   # Express server entry point
+│
+└── frontend/                       # Frontend (React)
+    └── src/
+        ├── api/
+        │   └── index.js            # API fetch helper with JWT injection
+        ├── context/
+        │   └── AuthContext.jsx     # Global auth state (login/logout)
+        ├── components/
+        │   ├── Login.jsx           # Login page with CEO card
+        │   ├── register.jsx        # Register page
+        │   ├── Navbar.jsx          # Sidebar navigation
+        │   ├── Dashboard.jsx       # User dashboard with stats
+        │   ├── Products.jsx        # Product browsing & ordering
+        │   ├── AddProduct.jsx      # Create/edit product modal
+        │   ├── AdminDashboard.jsx  # Admin analytics overview
+        │   ├── AdminProducts.jsx   # Admin product management
+        │   ├── AdminOrders.jsx     # Admin all orders + MyOrders
+        │   ├── AdminUsers.jsx      # Admin user list
+        │   └── ProtectedRoute.jsx  # Route guard component
+        ├── App.js                  # Main app entry & routing
+        └── App.css                 # All styles (Black & Gold theme)
+```
+
+---
+
+## ⚙️ Tech Stack
+
+### Backend
+| Technology | Purpose |
+|---|---|
+| Node.js | Runtime environment |
+| Express.js | Web framework & API routing |
+| MongoDB | NoSQL database |
+| Mongoose | MongoDB object modeling |
+| JWT (jsonwebtoken) | Authentication tokens |
+| bcrypt | Password hashing |
+| dotenv | Environment variable management |
+| cors | Cross-origin request handling |
+
+### Frontend
+| Technology | Purpose |
+|---|---|
+| React | UI framework |
+| Context API | Global state management |
+| Fetch API | HTTP requests to backend |
+| CSS (custom) | Black & Gold premium design |
+| Google Fonts | Inter + Playfair Display fonts |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+Make sure you have these installed:
+- Node.js (v16 or higher)
+- MongoDB (running on port 27018)
+- npm
+
+---
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/donjesuskayiranga-coder/inventory-management
+cd inventory-api
+```
+
+### 2. Set up the Backend
+```bash
+cd inventory-api
+npm install
+```
+
+Create a `.env` file in the `inventory-api` folder:
+```env
+PORT=7000
+MONGO_URI=mongodb://127.0.0.1:27018/inventory-db
+JWT_SECRET=your_secret_key_here
+```
+
+Start the backend:
+```bash
+npm start
+```
+
+Backend runs on: `http://localhost:7000`
+
+---
+
+### 3. Set up the Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Frontend runs on: `http://localhost:3000`
+
+---
+
+## 🔐 Authentication Flow
+
+1. User registers with username, email and password
+2. Password is hashed with bcrypt before saving to MongoDB
+3. On login, server verifies credentials and returns a JWT token
+4. Token is stored in `localStorage` in the browser
+5. Every API request includes the token in the `Authorization: Bearer <token>` header
+6. Backend middleware validates the token on every protected route
+
+---
+
+## 👥 User Roles
+
+### Regular User
+- View all products
+- Search products by name or SKU
+- Place orders on available products
+- View and manage their own orders
+- Cancel pending orders
+
+### Admin
+Everything a regular user can do, plus:
+- Create, edit and delete products
+- View all orders from all users system-wide
+- Update order status (pending → completed → cancelled)
+- Delete any order
+- View all registered users
+
+---
+
+## 🌐 API Endpoints
+
+### Auth Routes — `/api/auth`
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Register new account |
+| POST | `/api/auth/login` | Public | Login and get JWT token |
+| GET | `/api/auth/users` | Admin only | Get all users |
+
+### Product Routes — `/api/products`
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/products` | Any logged-in user | Get all products |
+| POST | `/api/products` | Admin only | Create new product |
+| PUT | `/api/products/:id` | Admin only | Update a product |
+| DELETE | `/api/products/:id` | Admin only | Delete a product |
+
+### Order Routes — `/api/orders`
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/orders` | Logged-in user | Get orders (own orders for users, all orders for admin) |
+| POST | `/api/orders` | Any logged-in user | Place a new order |
+| PUT | `/api/orders/:id` | Admin only | Update order status |
+| DELETE | `/api/orders/:id` | Admin only | Delete an order |
+
+---
+
+## 🗄️ Database Models
+
+### User
+```
+username    String   required, min 3 chars
+email       String   required, unique
+password    String   required, hashed with bcrypt
+role        String   "user" or "admin", default "user"
+timestamps  Auto     createdAt, updatedAt
+```
+
+### Product
+```
+name        String   required
+sku         String   required, unique
+price       Number   required
+quantity    Number   default 0
+description String   optional
+timestamps  Auto     createdAt, updatedAt
+```
+
+### Order
+```
+user        ObjectId  ref to User
+products    Array     [{ product: ObjectId, quantity: Number }]
+status      String    "pending" | "completed" | "cancelled"
+timestamps  Auto      createdAt, updatedAt
+```
+
+---
+
+## 🎨 Design System
+
+| Property | Value |
+|---|---|
+| Primary font | Inter |
+| Display font | Playfair Display |
+| Background | #0a0a0a |
+| Surface | #111111 |
+| Gold accent | #c9a84c |
+| Gold light | #e8c96d |
+| Success | #52a96e |
+| Danger | #e05252 |
+| Warning | #d4943a |
+
+---
+
+## 🔧 Making a User Admin
+
+After registering, open MongoDB shell and run:
+```bash
+mongosh --port 27018
+use inventory-db
+db.users.updateOne({ email: "youremail@example.com" }, { $set: { role: "admin" } })
+```
+
+---
+
+## 🛡️ Security Features
+
+- Passwords hashed with bcrypt (10 salt rounds)
+- JWT tokens expire after 7 days
+- Admin middleware blocks non-admin users from protected routes
+- Input validation on register and login
+- CORS enabled for frontend-backend communication
+
+---
+
+## 📋 Features Summary
+
+- ✅ JWT Authentication (register & login)
+- ✅ Role-based access control (admin & user)
+- ✅ Product management (CRUD)
+- ✅ Order management with status tracking
+- ✅ Admin analytics dashboard
+- ✅ Low stock alerts
+- ✅ Order status breakdown with progress bars
+- ✅ Top products by price & stock level ranking
+- ✅ User management panel
+- ✅ Search products by name or SKU
+- ✅ Black & Gold premium UI design
+- ✅ Fully responsive sidebar navigation
+
+---
+
+## 📄 License
+
+This project was built and designed by **KAYIRANGA Jesus**.  
+All rights reserved © 2026 VaultIQ.
+</file>
+
+<file path="backend/scripts/seed.js">
+const mongoose = require("mongoose");
+require('dotenv').config();
+const connectDB = require("../config/database");
+const User = require("../models/user");
+const Product = require("../models/product");
+async function seed() {
+    try {
+        await connectDB();
+        console.log('seeding database...');
+        await User.deleteMany();
+        await Product.deleteMany();
+        const admin = await User.create({
+            username : "Admin User",
+            email: "admin@inventory.com",
+            password: "admin123",
+            role:"admin",
+        });
+     console.log("Admin User created");
+        const products = await Product.insertMany([
+            {
+                name: "Laptop",
+                sku: "LAP123",
+                price : 1200,
+                quantity: 10,
+            },
+            {
+                name: "Mouse",
+                sku: "MOU456",
+                price:25,
+                quantity:100,
+            },
+            {
+                name: "Keyboard",
+                sku: "KEY789",
+                price:60,
+                quantity:50,
+            },
+            {
+                name: "MAC SCREENS",
+                sku: "MAC123",
+                price:100,
+                quantity:14,
+            }
+        ]);
+        console.log("products created");
+        console.log(" seeding completed");
+        process.exit();
+    } catch (error) {
+        console.error(" seeding error:",error);
+        process.exit(1);
+    }
+}
+seed();
+</file>
+
+<file path="frontend/src/api/index.js">
+const API_BASE = "http://localhost:7000/api";
+
+export async function apiFetch(path, options = {}) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...options,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Request failed");
+  return data;
+}
+</file>
+
+<file path="frontend/src/App.test.js">
+import { render, screen } from '@testing-library/react';
+import App from './App';
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+</file>
+
+<file path="frontend/src/App.css">
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --surface3: #222222;
+  --border: #2a2a2a;
+  --border2: #333333;
+  --gold: #c9a84c;
+  --gold2: #e8c96d;
+  --gold3: #f5dfa0;
+  --gold-dim: rgba(201,168,76,0.1);
+  --gold-dim2: rgba(201,168,76,0.2);
+  --text: #f0ede8;
+  --text2: #a09a90;
+  --text3: #5a5550;
+  --danger: #e05252;
+  --danger-dim: rgba(224,82,82,0.1);
+  --success: #52a96e;
+  --success-dim: rgba(82,169,110,0.1);
+  --warning: #d4943a;
+  --warning-dim: rgba(212,148,58,0.1);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font: 'Inter', sans-serif;
+  --font-display: 'Playfair Display', serif;
+}
+
+body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+
+.auth-page { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-left {
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 64px 60px; position: relative; overflow: hidden;
+}
+.auth-left::before {
+  content: ''; position: absolute; top: -100px; right: -100px;
+  width: 400px; height: 400px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.auth-left::after {
+  content: ''; position: absolute; bottom: -80px; left: -80px;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 56px; }
+.auth-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, var(--gold), var(--gold2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.auth-logo-name { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.auth-logo-name span { color: var(--gold); }
+.auth-headline { font-family: var(--font-display); font-size: 40px; font-weight: 800; line-height: 1.2; margin-bottom: 18px; }
+.auth-headline em { color: var(--gold); font-style: normal; }
+.auth-sub-text { font-size: 14px; color: var(--text2); line-height: 1.8; max-width: 360px; font-weight: 300; }
+.auth-features { margin-top: 44px; display: flex; flex-direction: column; gap: 14px; }
+.auth-feature { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text2); }
+.auth-feature-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+.ceo-card {
+  margin-top: 48px; padding: 18px 20px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius-lg); display: flex; align-items: center; gap: 16px;
+  position: relative; z-index: 1;
+}
+.ceo-photo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; object-position: top center; border: 2px solid var(--gold); flex-shrink: 0; }
+.ceo-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.ceo-title { font-size: 11px; color: var(--gold); font-weight: 500; margin-top: 3px; letter-spacing: 0.5px; text-transform: uppercase; }
+.ceo-quote { font-size: 12px; color: var(--text2); margin-top: 5px; font-style: italic; line-height: 1.5; }
+
+.auth-right { display: flex; align-items: center; justify-content: center; padding: 60px; background: var(--bg); }
+.auth-form-wrap { width: 100%; max-width: 400px; animation: fadeUp 0.4s ease; }
+.auth-form-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+.auth-form-sub { color: var(--text2); font-size: 13px; margin-bottom: 32px; font-weight: 300; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 7px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-family: var(--font);
+  font-size: 14px; padding: 11px 14px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s; appearance: none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.08); }
+.form-input::placeholder, .form-textarea::placeholder { color: var(--text3); }
+.form-textarea { min-height: 90px; resize: vertical; line-height: 1.6; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: none; border-radius: var(--radius); cursor: pointer; font-family: var(--font); font-weight: 600; font-size: 14px; padding: 11px 20px; transition: all 0.2s; white-space: nowrap; user-select: none; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #000; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, var(--gold2), var(--gold3)); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(201,168,76,0.3); }
+.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border2); }
+.btn-ghost:hover { background: var(--surface2); border-color: var(--gold); color: var(--gold); }
+.btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(224,82,82,0.2); }
+.btn-danger:hover { background: rgba(224,82,82,0.18); }
+.btn-success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(82,169,110,0.2); }
+.btn-success:hover { background: rgba(82,169,110,0.18); }
+.btn-icon { width: 32px; height: 32px; padding: 0; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
+.btn-icon:hover { border-color: var(--gold); color: var(--gold); }
+.btn-full { width: 100%; }
+.btn-lg { padding: 13px 28px; font-size: 15px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+.alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 16px; }
+.alert-error { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(224,82,82,0.25); }
+.alert-success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(82,169,110,0.25); }
+.auth-switch { text-align: center; margin-top: 22px; font-size: 13px; color: var(--text2); }
+.auth-switch a { color: var(--gold); font-weight: 600; cursor: pointer; }
+
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar { width: 230px; min-width: 230px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px 10px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 4px 10px; margin-bottom: 28px; }
+.sidebar-logo-box { width: 30px; height: 30px; background: linear-gradient(135deg, var(--gold), var(--gold2)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.sidebar-logo-name { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+.sidebar-logo-name span { color: var(--gold); }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 0 10px; margin: 14px 0 5px; }
+.nav-btn { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: var(--radius); border: none; background: none; color: var(--text2); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; text-align: left; transition: all 0.15s; }
+.nav-btn:hover { background: var(--surface2); color: var(--text); }
+.nav-btn.active { background: var(--gold-dim); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 8px; }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; border-radius: 20px; padding: 2px 6px; }
+.nav-divider { height: 1px; background: var(--border); margin: 10px 0; }
+.sidebar-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
+.user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--radius); background: var(--surface2); margin-bottom: 6px; border: 1px solid var(--border); }
+.user-avatar { width: 30px; height: 30px; border-radius: 6px; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+.user-name { font-size: 12px; font-weight: 600; }
+.user-role-pill { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; margin-top: 2px; }
+.user-role-pill.admin { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-dim2); }
+.user-role-pill.user { background: rgba(82,169,110,0.1); color: var(--success); border: 1px solid rgba(82,169,110,0.2); }
+
+.main { flex: 1; overflow-x: hidden; min-width: 0; }
+.page-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+.page-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.page-sub { font-size: 12px; color: var(--text2); margin-top: 2px; font-weight: 300; }
+.page-header-actions { display: flex; gap: 10px; align-items: center; }
+.content { padding: 24px 28px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+.stat-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(201,168,76,0.08); }
+.stat-card-icon { font-size: 20px; margin-bottom: 12px; }
+.stat-card-value { font-size: 28px; font-weight: 800; font-family: var(--font-display); line-height: 1; color: var(--gold); }
+.stat-card-label { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin-top: 5px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.card + .card { margin-top: 16px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.card-title { font-size: 13px; font-weight: 600; }
+.card-gold { border-top: 2px solid var(--gold); }
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); padding: 11px 20px; border-bottom: 1px solid var(--border); }
+.table td { padding: 13px 20px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+.table tbody tr { transition: background 0.1s; }
+.table tbody tr:hover td { background: var(--surface2); }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.badge::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.badge-pending { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(212,148,58,0.2); }
+.badge-completed { background: var(--success-dim); color: var(--success); border: 1px solid rgba(82,169,110,0.2); }
+.badge-cancelled { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(224,82,82,0.2); }
+.badge-low { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(224,82,82,0.2); }
+.badge-ok { background: var(--success-dim); color: var(--success); border: 1px solid rgba(82,169,110,0.2); }
+.badge-out { background: rgba(224,82,82,0.15); color: var(--danger); border: 1px solid rgba(224,82,82,0.25); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease; padding: 20px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 26px; width: 100%; max-width: 460px; animation: fadeUp 0.25s ease; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+.modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+.modal-footer .btn { flex: 1; }
+.empty { text-align: center; padding: 52px 24px; }
+.empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+.empty-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+.empty-sub { font-size: 13px; color: var(--text2); font-weight: 300; }
+.spinner-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 52px; color: var(--text2); font-size: 13px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 18px; height: 18px; border: 2px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+.admin-banner { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 18px; padding: 10px 14px; background: var(--gold-dim); border: 1px solid var(--gold-dim2); border-radius: var(--radius); }
+.tabs { display: flex; gap: 3px; padding: 4px; background: var(--surface2); border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border); }
+.tab { flex: 1; padding: 7px 14px; border: none; border-radius: 6px; background: none; color: var(--text2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.tab.active { background: var(--surface3); color: var(--gold); font-weight: 600; }
+.progress-wrap { background: var(--border); border-radius: 4px; height: 5px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.search-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 12px; outline: none; width: 200px; transition: border-color 0.2s; }
+.search-input:focus { border-color: var(--gold); }
+.search-input::placeholder { color: var(--text3); }
+
+
+.mono { font-family: 'Courier New', monospace; }
+.text-muted { color: var(--text2); }
+.text-dim { color: var(--text3); }
+.text-gold { color: var(--gold); }
+.text-accent { color: var(--gold); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-warning { color: var(--warning); }
+.fw-700 { font-weight: 700; }
+.fw-800 { font-weight: 800; }
+.fs-12 { font-size: 12px; }
+.fs-13 { font-size: 13px; }
+.actions-cell { display: flex; gap: 6px; align-items: center; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+</file>
+
+<file path="frontend/src/components/AdminProducts.jsx">
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";
+import AddProduct from "./AddProduct";
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+export default function AdminProducts() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+  const load = () => {
+    setLoading(true);
+    apiFetch("/products")
+      .then((p) => { setProducts(p); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const openCreate = () => { setEditProduct(null); setShowModal(true); };
+  const openEdit = (p) => { setEditProduct(p); setShowModal(true); };
+
+  const del = async (id) => {
+    try { await apiFetch(`/products/${id}`, { method: "DELETE" }); load(); }
+    catch (e) { alert(e.message); }
+  };
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Manage Products</div>
+          <div className="page-sub">{products.length} products in inventory</div>
+        </div>
+        <button className="btn btn-primary" onClick={openCreate}>+ Add Product</button>
+      </div>
+      <div className="content">
+        <div className="admin-banner">🔐 Admin — Create, edit, and delete products</div>
+        <div className="card">
+          {loading ? <Loading /> : products.length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">📦</div>
+              <div className="empty-title">No products yet</div>
+              <div className="empty-sub">Click "Add Product" to get started</div>
+            </div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Name</th><th>SKU</th><th>Price</th><th>Quantity</th><th>Description</th><th>Actions</th></tr></thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p._id}>
+                    <td className="fw-700">{p.name}</td>
+                    <td className="mono text-dim fs-12">{p.sku}</td>
+                    <td className="text-accent fw-700 mono">${Number(p.price).toFixed(2)}</td>
+                    <td><span className={p.quantity === 0 ? "text-danger fw-700" : p.quantity <= 5 ? "text-warning fw-700" : "text-muted"}>{p.quantity}</span></td>
+                    <td className="text-muted fs-12" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description || "—"}</td>
+                    <td>
+                      <div className="actions-cell">
+                        <button className="btn btn-icon" onClick={() => openEdit(p)}>✏️</button>
+                        <button className="btn btn-icon" onClick={() => del(p._id)} style={{ color: "var(--danger)" }}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+      {showModal && (
+        <AddProduct editProduct={editProduct} onClose={() => setShowModal(false)} onSaved={load} />
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/AdminUsers.jsx">
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";/
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+export default function AdminUsers() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    apiFetch("/auth/users")
+      .then((data) => { setUsers(data); setLoading(false); })
+      .catch((e) => { setError(e.message); setLoading(false); });
+  }, []);
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Users</div>
+          <div className="page-sub">{users.length} registered users</div>
+        </div>
+      </div>
+      <div className="content">
+        <div className="admin-banner">🔐 Admin — User management panel</div>
+        <div className="card">
+          <div className="card-header"><div className="card-title">All Users</div></div>
+          {loading ? <Loading /> : error ? (
+            <div className="empty">
+              <div className="empty-icon">⚠️</div>
+              <div className="empty-title">Could not load users</div>
+              <div className="empty-sub">{error}</div>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">👥</div>
+              <div className="empty-title">No users found</div>
+            </div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr><th>Username</th><th>Email</th><th>Role</th><th>Joined</th></tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u._id}>
+                    <td className="fw-700">{u.username}</td>
+                    <td className="text-muted">{u.email}</td>
+                    <td><span className={`user-role-pill ${u.role}`}>{u.role}</span></td>
+                    <td className="text-dim fs-12">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/Products.jsx">
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";
+
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">{title}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function Products() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [orderModal, setOrderModal] = useState(null);
+  const [qty, setQty] = useState(1);
+  const [placing, setPlacing] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    apiFetch("/products")
+      .then((p) => { setProducts(p); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.sku.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const placeOrder = async () => {
+    setPlacing(true);
+    try {
+      await apiFetch("/orders", {
+        method: "POST",
+        body: JSON.stringify({ products: [{ product: orderModal._id, quantity: Number(qty) }] }),
+      });
+      setMsg("✅ Order placed successfully!");
+      setTimeout(() => { setOrderModal(null); setMsg(""); }, 1400);
+    } catch (e) {
+      setMsg(e.message);
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Products</div>
+          <div className="page-sub">{products.length} items available</div>
+        </div>
+        <div className="page-header-actions">
+          <input className="search-input" placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+      </div>
+      <div className="content">
+        <div className="card">
+          {loading ? <Loading /> : filtered.length === 0 ? (
+            <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">No products found</div></div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Product</th><th>SKU</th><th>Price</th><th>Stock</th><th>Description</th><th></th></tr></thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr key={p._id}>
+                    <td className="fw-700">{p.name}</td>
+                    <td className="mono text-dim fs-12">{p.sku}</td>
+                    <td className="text-accent fw-700 mono">${Number(p.price).toFixed(2)}</td>
+                    <td>
+                      <span className={`badge ${p.quantity === 0 ? "badge-out" : p.quantity <= 5 ? "badge-low" : "badge-ok"}`}>
+                        {p.quantity === 0 ? "Out of Stock" : p.quantity <= 5 ? `Low (${p.quantity})` : `In Stock (${p.quantity})`}
+                      </span>
+                    </td>
+                    <td className="text-muted fs-12" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description || "—"}</td>
+                    <td>
+                      <button className="btn btn-sm btn-success" disabled={p.quantity === 0} onClick={() => { setOrderModal(p); setQty(1); setMsg(""); }}>Order</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {orderModal && (
+        <Modal title={`Order: ${orderModal.name}`} onClose={() => setOrderModal(null)}>
+          {msg && <div className={`alert ${msg.startsWith("✅") ? "alert-success" : "alert-error"}`}>{msg}</div>}
+          <div className="form-group">
+            <label className="form-label">Unit Price</label>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "var(--accent)", fontFamily: "var(--mono)" }}>${Number(orderModal.price).toFixed(2)}</div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Quantity (max {orderModal.quantity})</label>
+            <input className="form-input" type="number" min={1} max={orderModal.quantity} value={qty} onChange={(e) => setQty(e.target.value)} />
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 4 }}>
+            Total: <strong style={{ color: "var(--accent)", fontFamily: "var(--mono)" }}>${(orderModal.price * qty).toFixed(2)}</strong>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={() => setOrderModal(null)}>Cancel</button>
+            <button className="btn btn-primary" onClick={placeOrder} disabled={placing || msg.startsWith("✅")}>{placing ? "Placing…" : "Place Order"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/ProtectedRoute.jsx">
+import { useAuth } from "../context/AuthContext";
+
+export default function ProtectedRoute({ children, adminOnly = false }) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="empty" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div className="empty-icon">🔒</div>
+        <div className="empty-title">Not authenticated</div>
+        <div className="empty-sub">Please log in to access this page.</div>
+      </div>
+    );
+  }
+
+  if (adminOnly && user.role !== "admin") {
+    return (
+      <div className="empty" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div className="empty-icon">🚫</div>
+        <div className="empty-title">Access denied</div>
+        <div className="empty-sub">This page is for admins only.</div>
+      </div>
+      
+    );
+  }
+
+  return children;
+}
+</file>
+
+<file path="frontend/src/context/AuthContext.jsx">
+import { createContext, useContext, useState } from "react";
+const AuthContext = createContext(null);
+export function useAuth() {
+  return useContext(AuthContext);
+}
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    try {
+      const u = localStorage.getItem("user");
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+      
+    }
+  });
+  const login = (u) => {
+    localStorage.setItem("token", u.token);
+    localStorage.setItem("user", JSON.stringify(u));
+    setUser(u);
+  };
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+</file>
+
+<file path="frontend/src/components/AdminDashboard.jsx">
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";
+
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+
+export default function AdminDashboard() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    Promise.all([apiFetch("/products"), apiFetch("/orders")])
+      .then(([products, orders]) => setData({ products, orders }))
+      .catch(() => setData({ products: [], orders: [] }));
+  }, []);
+
+  if (!data) return (
+    <>
+      <div className="page-header"><div className="page-title">Admin Overview</div></div>
+      <Loading />
+    </>
+  );
+  const { products, orders } = data;
+  const totalValue = products.reduce((s, p) => s + p.price * p.quantity, 0);
+  const pending = orders.filter((o) => o.status === "pending").length;
+  const completed = orders.filter((o) => o.status === "completed").length;
+  const cancelled = orders.filter((o) => o.status === "cancelled").length;
+  const lowStock = products.filter((p) => p.quantity <= 5);
+  const topByPrice = [...products].sort((a, b) => b.price - a.price).slice(0, 5);
+  const topByQty = [...products].sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+  const pct = (n) => (orders.length ? Math.round((n / orders.length) * 100) : 0);
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Admin Overview</div>
+          <div className="page-sub">Full system analytics & control</div>
+        </div>
+      </div>
+      <div className="content">
+        <div className="admin-banner">🔐 Admin Area — Full read/write access to all system data</div>
+        <div className="stats-grid">
+          <div className="stat-card green"><div className="stat-card-icon">📦</div><div className="stat-card-value">{products.length}</div><div className="stat-card-label">Total Products</div></div>
+          <div className="stat-card blue"><div className="stat-card-icon">🛒</div><div className="stat-card-value">{orders.length}</div><div className="stat-card-label">Total Orders</div></div>
+          <div className="stat-card orange"><div className="stat-card-icon">⏳</div><div className="stat-card-value">{pending}</div><div className="stat-card-label">Pending</div></div>
+          <div className="stat-card green"><div className="stat-card-icon">✅</div><div className="stat-card-value">{completed}</div><div className="stat-card-label">Completed</div></div>
+          <div className="stat-card red"><div className="stat-card-icon">❌</div><div className="stat-card-value">{cancelled}</div><div className="stat-card-label">Cancelled</div></div>
+          <div className="stat-card purple"><div className="stat-card-icon">💰</div><div className="stat-card-value">${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</div><div className="stat-card-label">Inventory Value</div></div>
+        </div>
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header"><div className="card-title">📊 Order Status Breakdown</div></div>
+          <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
+            {[
+              { label: "Pending", count: pending, pct: pct(pending), color: "var(--warning)" },
+              { label: "Completed", count: completed, pct: pct(completed), color: "var(--success)" },
+              { label: "Cancelled", count: cancelled, pct: pct(cancelled), color: "var(--danger)" },
+            ].map((s) => (
+              <div key={s.label}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, marginBottom: 7 }}>
+                  <span style={{ color: s.color }}>{s.label}</span>
+                  <span className="text-dim">{s.count} orders ({s.pct}%)</span>
+                </div>
+                <div className="progress-wrap">
+                  <div className="progress-bar" style={{ width: `${s.pct}%`, background: s.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="two-col">
+          <div className="card">
+            <div className="card-header"><div className="card-title">💎 Top Products by Price</div></div>
+            <table className="table">
+              <thead><tr><th>#</th><th>Name</th><th>Price</th><th>Qty</th></tr></thead>
+              <tbody>
+                {topByPrice.map((p, i) => (
+                  <tr key={p._id}>
+                    <td className="text-dim fw-700">{i + 1}</td>
+                    <td className="fw-700 fs-13">{p.name}</td>
+                    <td className="text-accent fw-700 mono">${p.price.toFixed(2)}</td>
+                    <td className="text-muted">{p.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">⚠️ Low Stock Alerts</div>
+              <span className={`badge ${lowStock.length > 0 ? "badge-low" : "badge-ok"}`}>{lowStock.length > 0 ? `${lowStock.length} items` : "All good"}</span>
+            </div>
+            {lowStock.length === 0 ? (
+              <div className="empty" style={{ padding: 36 }}>
+                <div className="empty-icon">✅</div>
+                <div className="empty-title" style={{ fontSize: 14 }}>All products well-stocked</div>
+              </div>
+            ) : (
+              <table className="table">
+                <thead><tr><th>Product</th><th>SKU</th><th>Stock</th></tr></thead>
+                <tbody>
+                  {lowStock.map((p) => (
+                    <tr key={p._id}>
+                      <td className="fw-700 fs-13">{p.name}</td>
+                      <td className="mono text-dim fs-12">{p.sku}</td>
+                      <td className={`fw-700 ${p.quantity === 0 ? "text-danger" : "text-warning"}`}>{p.quantity === 0 ? "OUT" : p.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+        <div className="card" style={{ marginTop: 20 }}>
+          <div className="card-header"><div className="card-title">📦 Products by Stock Level</div></div>
+          <table className="table">
+            <thead><tr><th>Rank</th><th>Product</th><th>SKU</th><th>Quantity</th><th>Value</th><th>Status</th></tr></thead>
+            <tbody>
+              {topByQty.map((p, i) => (
+                <tr key={p._id}>
+                  <td className="text-dim fw-700">#{i + 1}</td>
+                  <td className="fw-700">{p.name}</td>
+                  <td className="mono text-dim fs-12">{p.sku}</td>
+                  <td className="fw-700">{p.quantity}</td>
+                  <td className="text-accent mono">${(p.price * p.quantity).toFixed(2)}</td>
+                  <td><span className={`badge ${p.quantity === 0 ? "badge-out" : p.quantity <= 5 ? "badge-low" : "badge-ok"}`}>{p.quantity === 0 ? "Out of Stock" : p.quantity <= 5 ? "Low Stock" : "In Stock"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/Dashboard.jsx">
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/index";
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+export default function Dashboard() {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    Promise.all([apiFetch("/products"), apiFetch("/orders")])
+      .then(([products, orders]) => setData({ products, orders }))
+      .catch(() => setData({ products: [], orders: [] }));
+  }, []);
+  if (!data) return (
+    <>
+      <div className="page-header"><div className="page-title">Dashboard</div></div>
+      <Loading />
+    </>
+  );
+  const { products, orders } = data;
+  const totalValue = products.reduce((s, p) => s + p.price * p.quantity, 0);
+  const pending = orders.filter((o) => o.status === "pending").length;
+  const lowStock = products.filter((p) => p.quantity <= 5).length;
+  return (
+    <div>
+      <div className="page-header">
+        <div>frontend/src/components/AdminDashboard.jsx
+          <div className="page-title">Dashboard</div>
+          <div className="page-sub">Welcome back, {user?.username}</div>
+        </div>
+      </div>
+      <div className="content">
+        <div className="stats-grid">
+          <div className="stat-card green"><div className="stat-card-icon">📦</div><div className="stat-card-value">{products.length}</div><div className="stat-card-label">Products</div></div>
+          <div className="stat-card blue"><div className="stat-card-icon">🛒</div><div className="stat-card-value">{orders.length}</div><div className="stat-card-label">My Orders</div></div>
+          <div className="stat-card orange"><div className="stat-card-icon">⏳</div><div className="stat-card-value">{pending}</div><div className="stat-card-label">Pending</div></div>
+          <div className="stat-card purple"><div className="stat-card-icon">💰</div><div className="stat-card-value">${totalValue.toLocaleString("en", { maximumFractionDigits: 0 })}</div><div className="stat-card-label">Inventory Value</div></div>
+          {lowStock > 0 && <div className="stat-card red"><div className="stat-card-icon">⚠️</div><div className="stat-card-value">{lowStock}</div><div className="stat-card-label">Low Stock</div></div>}
+        </div>
+        <div className="card">
+          <div className="card-header"><div className="card-title">Recent Orders</div></div>
+          {orders.length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">🛒</div>
+              <div className="empty-title">No orders yet</div>
+              <div className="empty-sub">Head to Products to place an order</div>
+            </div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Order ID</th><th>Items</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody>
+                {orders.slice(0, 6).map((o) => (
+                  <tr key={o._id}>
+                    <td className="mono text-dim fs-12">{o._id.slice(-10)}</td>
+                    <td className="text-muted">{o.products?.length} item(s)</td>
+                    <td><span className={`badge badge-${o.status}`}>{o.status}</span></td>
+                    <td className="text-dim fs-12">{new Date(o.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/AddProduct.jsx">
+import { useState } from "react";
+import { apiFetch } from "../api/index";
+function Modal({ title, onClose, children }) {
+  
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">{title}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function AddProduct({ onClose, onSaved, editProduct = null }) {
+  const [form, setForm] = useState({
+    name: editProduct?.name || "",
+    sku: editProduct?.sku || "",
+    price: editProduct?.price || "",
+    quantity: editProduct?.quantity || "",
+    description: editProduct?.description || "",
+  });
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const save = async () => {
+    if (!form.name || !form.sku || !form.price) return setErr("Name, SKU and Price are required");
+    setSaving(true);
+    setErr("");
+    try {
+      const body = { ...form, price: Number(form.price), quantity: Number(form.quantity) };
+      if (editProduct) {
+        await apiFetch(`/products/${editProduct._id}`, { method: "PUT", body: JSON.stringify(body) });
+      } else {
+        await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
+      }
+      onSaved();
+      onClose();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal title={editProduct ? "Edit Product" : "Add Product"} onClose={onClose}>
+      {err && <div className="alert alert-error">{err}</div>}
+      <div className="form-group">
+        <label className="form-label">Name *</label>
+        <input className="form-input" placeholder="Product name" value={form.name} onChange={set("name")} />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">SKU *</label>
+        <input className="form-input" placeholder="SKU-001" value={form.sku} onChange={set("sku")} />
+      </div>
+
+      <div className="form-grid-2">
+        <div className="form-group">
+          <label className="form-label">Price *</label>
+          <input className="form-input" type="number" step="0.01" placeholder="0.00" value={form.price} onChange={set("price")} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Quantity</label>
+          <input className="form-input" type="number" placeholder="0" value={form.quantity} onChange={set("quantity")} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Description</label>
+        <textarea className="form-textarea" placeholder="Optional…" value={form.description} onChange={set("description")} />
+      </div>
+      <div className="modal-footer">
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : editProduct ? "Save Changes" : "Create Product"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+</file>
+
+<file path="frontend/src/components/AdminOrders.jsx">
+import { useState, useEffect } from "react";
+import { apiFetch } from "../api/index";
+function Loading() {
+  return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
+}
+export default function AdminOrders() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [updating, setUpdating] = useState(null);
+  const load = () => {
+    setLoading(true);
+    apiFetch("/orders")
+    
+      .then((o) => { setOrders(o); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+  const updateStatus = async (id, status) => {
+    setUpdating(id);
+    try {
+      await apiFetch(`/orders/${id}`, { method: "PUT", body: JSON.stringify({ status }) });
+      load();
+    } catch (e) { alert(e.message); }
+    finally { setUpdating(null); }
+  };
+  const del = async (id) => {
+    try { await apiFetch(`/orders/${id}`, { method: "DELETE" }); load(); }
+    catch (e) { alert(e.message); }
+  };
+  const counts = { all: orders.length, pending: 0, completed: 0, cancelled: 0 };
+  orders.forEach((o) => { if (counts[o.status] !== undefined) counts[o.status]++; });
+  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">All Orders</div>
+          <div className="page-sub">{orders.length} orders system-wide</div>
+        </div>
+      </div>
+      <div className="content">
+        <div className="admin-banner">🔐 Admin — View and update every order in the system</div>
+        <div className="tabs">
+          {["all", "pending", "completed", "cancelled"].map((t) => (
+            <button key={t} className={`tab ${filter === t ? "active" : ""}`} onClick={() => setFilter(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)} ({counts[t]})
+            </button>
+          ))}
+        </div>
+        <div className="card">
+          {loading ? <Loading /> : filtered.length === 0 ? (
+            <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No orders here</div></div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Order ID</th><th>Products</th><th>Status</th><th>Date</th><th>Update</th><th></th></tr></thead>
+              <tbody>
+                {filtered.map((o) => (
+                  <tr key={o._id}>
+                    <td className="mono text-dim fs-12">{o._id.slice(-10)}</td>
+                    <td>{o.products?.map((p, i) => <div key={i} className="fs-12 text-muted">{p.product?.name || <em className="text-dim">Deleted product</em>} ×{p.quantity}</div>)}</td>
+                    <td><span className={`badge badge-${o.status}`}>{o.status}</span></td>
+                    <td className="text-dim fs-12">{new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <select className="form-select" style={{ width: "auto", padding: "5px 10px", fontSize: 12 }} value={o.status} disabled={updating === o._id} onChange={(e) => updateStatus(o._id, e.target.value)}>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td><button className="btn btn-icon" onClick={() => del(o._id)} style={{ color: "var(--danger)" }}>🗑️</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+export function MyOrders() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const load = () => {
+    setLoading(true);
+    apiFetch("/orders")
+      .then((o) => { setOrders(o); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+  const cancel = async (id) => {
+    try {
+      await apiFetch(`/orders/${id}`, { method: "PUT", body: JSON.stringify({ status: "cancelled" }) });
+      load();
+    } catch (e) { alert(e.message); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/orders/${id}`, { method: "DELETE" }); load(); }
+    catch (e) { alert(e.message); }
+  };
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">My Orders</div>
+          <div className="page-sub">{orders.length} total orders</div>
+        </div>
+      </div>
+      <div className="content">
+        <div className="card">
+          {loading ? <Loading /> : orders.length === 0 ? (
+            <div className="empty">
+              <div className="empty-icon">🛒</div>
+              <div className="empty-title">No orders yet</div>
+              <div className="empty-sub">Head to Products to place an order</div>
+            </div>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Order ID</th><th>Products</th><th>Status</th><th>Placed</th><th>Actions</th></tr></thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o._id}>
+                    <td className="mono text-dim fs-12">{o._id.slice(-10)}</td>
+                    <td>{o.products?.map((p, i) => <div key={i} className="fs-12 text-muted">{p.product?.name || <em className="text-dim">Deleted product</em>} ×{p.quantity}</div>)}</td>
+                    <td><span className={`badge badge-${o.status}`}>{o.status}</span></td>
+                    <td className="text-dim fs-12">{new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <div className="actions-cell">
+                        {o.status === "pending" && <button className="btn btn-sm btn-danger" onClick={() => cancel(o._id)}>Cancel</button>}
+                        <button className="btn btn-icon" onClick={() => del(o._id)} style={{ color: "var(--danger)" }}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/Register.jsx">
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/index";
+
+export default function Register({ onSwitch }) {
+  const { login } = useAuth();
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (!form.username || !form.email || !form.password) return setErr("All fields required");
+    setLoading(true);
+    setErr("");
+    try {
+      await apiFetch("/auth/register", { method: "POST", body: JSON.stringify(form) });
+      login(await apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email: form.email, password: form.password }) }));
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-left">
+        <div className="auth-logo">
+          <div className="auth-logo-box">🏛️</div>
+          <div className="auth-logo-name">Vault<span>IQ</span></div>
+        </div>
+        <div className="auth-headline">Join<br /><em>VaultIQ</em><br />Today.</div>
+        <div className="auth-sub-text">Get instant access to premium inventory tracking, smart order management, and powerful analytics built for serious operations.</div>
+        <div className="auth-features">
+          {["Free to get started", "Instant setup", "Full admin capabilities", "Secure JWT authentication"].map((f) => (
+            <div className="auth-feature" key={f}><div className="auth-feature-dot" />{f}</div>
+          ))}
+        </div>
+      </div>
+      <div className="auth-right">
+        <div className="auth-form-wrap">
+          <div className="auth-form-title">Create account</div>
+          <div className="auth-form-sub">Fill in your details to get started</div>
+          {err && <div className="alert alert-error">{err}</div>}
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input className="form-input" placeholder="Don Jesus" value={form.username} onChange={set("username")} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" placeholder="donjesuskayiranga@gmail.com" value={form.email} onChange={set("email")} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            
+            <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={set("password")} onKeyDown={(e) => e.key === "Enter" && submit()} />
+          </div>
+          <button className="btn btn-primary btn-full btn-lg" onClick={submit} disabled={loading}>
+            {loading ? "Creating…" : "Create Account"}
+          </button>
+          <p className="auth-switch">Already have an account? <a onClick={onSwitch}>Sign in</a></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/App.js">
+import { useState, useEffect } from "react";
+import "./App.css";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { apiFetch } from "./api/index";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import Navbar from "./components/Navbar";
+import Dashboard from "./components/Dashboard";
+import Products from "./components/Products";
+import AdminDashboard from "./components/AdminDashboard";
+import AdminProduct from "./components/AdminProducts";
+import AdminOrders, { MyOrders } from "./components/AdminOrders";
+import AdminUsers from "./components/AdminUsers";
+function AppShell() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [page, setPage] = useState(isAdmin ? "admin-overview" : "dashboard");
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    apiFetch("/orders").then(setOrders).catch(() => {});
+  }, [page]);
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const renderPage = () => {
+    switch (page) {
+      case "dashboard":      return <Dashboard />;
+      case "products":       return <Products />;
+      case "orders":         return <MyOrders />;
+      case "admin-overview": return <AdminDashboard />;
+      case "admin-products": return <AdminProduct />;
+      case "admin-orders":   return <AdminOrders />;
+      case "admin-users":    return <AdminUsers />;
+      default:               return <Dashboard />;
+    }
+  };
+  return (
+    <div className="layout">
+      <Navbar page={page} setPage={setPage} pendingCount={pendingCount} />
+      <div className="main">{renderPage()}</div>
+    </div>
+  );
+}
+function App() {
+  const { user } = useAuth();
+  const [mode, setMode] = useState("login");
+  if (!user) {
+    return mode === "login"
+      ? <Login onSwitch={() => setMode("register")} />
+      : <Register onSwitch={() => setMode("login")} />;
+  }
+  return <AppShell />;
+}
+export default function Root() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+</file>
+
+<file path="frontend/src/components/Login.jsx">
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../api/index";
+
+const CEO_PHOTO = "data:image/png;base64,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";
+export default function Login({ onSwitch }) {
+  const { login } = useAuth();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const submit = async () => {
+    if (!form.email || !form.password) return setErr("All fields required");
+    setLoading(true);
+    setErr("");
+    try {
+      login(await apiFetch("/auth/login", { method: "POST", body: JSON.stringify(form) }));
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-left">
+        <div className="auth-logo">
+          <div className="auth-logo-box">🏛️</div>
+          <div className="auth-logo-name">Vault<span>IQ</span></div>
+        </div>
+        <div className="auth-headline">Smart<br /><em>Inventory</em><br />Management.</div>
+        <div className="auth-sub-text">A premium platform for tracking products, managing orders, and gaining complete visibility over your stock operations.</div>
+        <div className="auth-features">
+          {["Real-time product tracking", "Order management & analytics", "Admin dashboard & reporting", "Role-based access control"].map((f) => (
+            <div className="auth-feature" key={f}><div className="auth-feature-dot" />{f}</div>
+          ))}
+        </div>
+        <div className="ceo-card">
+          <img className="ceo-photo" src={CEO_PHOTO} alt="KAYIRANGA Jesus" />
+          <div>
+            <div className="ceo-name">KAYIRANGA Jesus</div>
+            <div className="ceo-title">CEO &amp; Founder — VaultIQ</div>
+            <div className="ceo-quote">"Precision in every transaction, clarity in every decision."</div>
+          </div>
+        </div>
+      </div>
+      <div className="auth-right">
+        <div className="auth-form-wrap">
+          <div className="auth-form-title">Welcome back</div>
+          <div className="auth-form-sub">Sign in to your VaultIQ account</div>
+          {err && <div className="alert alert-error">{err}</div>}
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" placeholder="donjesuskayiranga@gmail.com" value={form.email} onChange={set("email")} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={set("password")} onKeyDown={(e) => e.key === "Enter" && submit()} />
+          </div>
+          <button className="btn btn-primary btn-full btn-lg" onClick={submit} disabled={loading}>
+            {loading ? "Signing in…" : "Sign In"}
+          </button>
+          <p className="auth-switch">No account? <a onClick={onSwitch}>Register here</a></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/components/Navbar.jsx">
+import { useAuth } from "../context/AuthContext";
+export default function Navbar({ page, setPage, pendingCount }) {
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
+  return (
+    <div className="sidebar">
+      <div className="sidebar-logo">
+        <div className="sidebar-logo-box">🏛️</div>
+        <div className="sidebar-logo-name">Vault<span>IQ</span></div>
+      </div>
+      <div className="nav-label">Main</div>
+      {[
+        { id: "dashboard", icon: "⊞", label: "Dashboard" },
+        { id: "products", icon: "◈", label: "Products" },
+        { id: "orders", icon: "◎", label: "My Orders", badge: pendingCount || 0 },
+      ].map((n) => (
+        <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+          <span className="nav-icon">{n.icon}</span>
+          {n.label}
+          {n.badge > 0 && <span className="nav-badge">{n.badge}</span>}
+        </button>
+      ))}
+      {isAdmin && (
+        <>
+          <div className="nav-divider" />
+          <div className="nav-label">Admin Panel</div>
+          {[
+            { id: "admin-overview", icon: "◉", label: "Overview" },
+            { id: "admin-products", icon: "▦", label: "Manage Products" },
+            { id: "admin-orders", icon: "≡", label: "All Orders" },
+            { id: "admin-users", icon: "◍", label: "Users" },
+          ].map((n) => (
+            <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+              <span className="nav-icon">{n.icon}</span>
+              {n.label}
+            </button>
+          ))}
+        </>
+      )}
+      <div className="sidebar-footer">
+        <div className="user-card">
+          <div className="user-avatar">
+            {user?.username?.[0]?.toUpperCase()}
+          </div>
+          <div>
+            <div className="user-name">{user?.username}</div>
+            <span className={`user-role-pill ${user?.role}`}>{user?.role}</span>
+          </div>
+        </div>
+        <button className="nav-btn" onClick={logout}>
+          <span className="nav-icon">→</span>Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
+</file>
+
+</files>

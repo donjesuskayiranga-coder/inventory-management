@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
-import { apiFetch } from "../api/index";/
+import { apiFetch } from "../api/index"; // Fix from earlier - removed stray /
+
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   useEffect(() => {
     apiFetch("/auth/users")
       .then((data) => { setUsers(data); setLoading(false); })
-      .catch((e) => { setError(e.message); setLoading(false); });
+      .catch((e) => { setError(e.message); setLoading(false); }); // Fix 9: surface error
   }, []);
+
   return (
     <div>
       <div className="page-header">

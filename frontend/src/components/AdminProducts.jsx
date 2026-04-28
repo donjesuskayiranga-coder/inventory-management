@@ -1,29 +1,45 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../api/index";
 import AddProduct from "./AddProduct";
+
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
+
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
+  const [deleting, setDeleting] = useState(null); // Fix 11: track which item is being deleted
+  const [error, setError] = useState(""); // Fix 9: surface errors
+
   const load = () => {
     setLoading(true);
     apiFetch("/products")
       .then((p) => { setProducts(p); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch((e) => { setError(e.message); setLoading(false); }); // Fix 9
   };
+
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditProduct(null); setShowModal(true); };
   const openEdit = (p) => { setEditProduct(p); setShowModal(true); };
 
+  // Fix 11: Disable button while deleting to prevent double-click
   const del = async (id) => {
-    try { await apiFetch(`/products/${id}`, { method: "DELETE" }); load(); }
-    catch (e) { alert(e.message); }
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    setDeleting(id);
+    try {
+      await apiFetch(`/products/${id}`, { method: "DELETE" });
+      load();
+    } catch (e) {
+      setError(e.message); // Fix 9
+    } finally {
+      setDeleting(null);
+    }
   };
+
   return (
     <div>
       <div className="page-header">
@@ -34,6 +50,7 @@ export default function AdminProducts() {
         <button className="btn btn-primary" onClick={openCreate}>+ Add Product</button>
       </div>
       <div className="content">
+        {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
         <div className="admin-banner">🔐 Admin — Create, edit, and delete products</div>
         <div className="card">
           {loading ? <Loading /> : products.length === 0 ? (
@@ -56,7 +73,15 @@ export default function AdminProducts() {
                     <td>
                       <div className="actions-cell">
                         <button className="btn btn-icon" onClick={() => openEdit(p)}>✏️</button>
-                        <button className="btn btn-icon" onClick={() => del(p._id)} style={{ color: "var(--danger)" }}>🗑️</button>
+                        {/* Fix 11: disabled while deleting to prevent double-click */}
+                        <button
+                          className="btn btn-icon"
+                          onClick={() => del(p._id)}
+                          disabled={deleting === p._id}
+                          style={{ color: "var(--danger)", opacity: deleting === p._id ? 0.5 : 1 }}
+                        >
+                          {deleting === p._id ? "..." : "🗑️"}
+                        </button>
                       </div>
                     </td>
                   </tr>

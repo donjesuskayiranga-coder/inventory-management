@@ -1,31 +1,49 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../api/index";
+
 function Loading() {
   return <div className="spinner-wrap"><div className="spinner" /> Loading...</div>;
 }
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
+  const [error, setError] = useState(""); // Fix 9: show errors instead of swallowing them
+
   useEffect(() => {
     Promise.all([apiFetch("/products"), apiFetch("/orders")])
       .then(([products, orders]) => setData({ products, orders }))
-      .catch(() => setData({ products: [], orders: [] }));
+      .catch((e) => setError(e.message)); // Fix 9: surface the error
   }, []);
+
+  if (error) return (
+    <div className="content">
+      <div className="empty">
+        <div className="empty-icon">⚠️</div>
+        <div className="empty-title">Failed to load dashboard</div>
+        <div className="empty-sub">{error}</div>
+      </div>
+    </div>
+  );
+
   if (!data) return (
     <>
       <div className="page-header"><div className="page-title">Dashboard</div></div>
       <Loading />
     </>
   );
+
   const { products, orders } = data;
   const totalValue = products.reduce((s, p) => s + p.price * p.quantity, 0);
   const pending = orders.filter((o) => o.status === "pending").length;
   const lowStock = products.filter((p) => p.quantity <= 5).length;
+
   return (
     <div>
       <div className="page-header">
-        <div>frontend/src/components/AdminDashboard.jsx
+        <div>
+          {/* Fix 4: Removed stray text "frontend/src/components/AdminDashboard.jsx" that was here */}
           <div className="page-title">Dashboard</div>
           <div className="page-sub">Welcome back, {user?.username}</div>
         </div>
